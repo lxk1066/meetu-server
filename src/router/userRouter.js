@@ -16,9 +16,14 @@ const mime = require('mime-types')
 userRouter.post('/login', async (ctx) => {
   // 1.拿到请求体中的用户名和密码并验证
   const user = ctx.request.body;
-  
+
   // 2.查验数据库
-  const res = await queryDB(`select uid,username,password from meetu_users where username="${user.username}"`)
+  let res;
+  if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.username)) {
+    res = await queryDB(`select uid,username,password from meetu_users where email="${user.username}"`)
+  } else {
+    res = await queryDB(`select uid,username,password from meetu_users where username="${user.username}"`)
+  }
 
   if (res.length <= 0) {
     ctx.body = { code: 403, msg: "用户名或密码错误！" }
@@ -145,7 +150,7 @@ userRouter.post('/upload', async (ctx) => {
       if (index !== 0) { fs.unlink(item.filepath, (err) => {}) }
     })
   }
-  
+
   let newProfile;
   try {
     files[key][0].length
@@ -198,7 +203,7 @@ userRouter.get('/getProfile/:filename', async (ctx) => {
   } catch (error) {
     //如果服务器不存在请求的图片，返回默认图片
       filePath = path.join(__dirname, '../../media/profile/default.png'); //默认图片地址
-      file = fs.readFileSync(filePath); //读取文件	    
+      file = fs.readFileSync(filePath); //读取文件
   }
   const mimeType = mime.lookup(filePath); // 文件类型
   ctx.set('Content-Type', mimeType); //设置返回类型
