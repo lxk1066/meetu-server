@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "npx nodemon src/index.js",
-    "serve": "npx pm2 start main.js --name meetu-server"
+    "serve": "npx pm2 start src/index.js --name meetu-server"
   },
   "keywords": [],
   "author": "",
