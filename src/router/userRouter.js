@@ -217,14 +217,20 @@ userRouter.post('/updateUsername', async (ctx) => {
   if (!body.username || body.username.toString().length < 4 || body.username.toString().length > 30) {
     ctx.body = { code: 400, msg: '用户名必须为4~30个字符' }
   } else {
-    try {
-      await queryDB(`UPDATE meetu_users SET username="${body.username}" WHERE uid=${parseInt(uid)}`);
-    } catch (e) {
-      ctx.body = { code: 500, msg: '修改失败' }
-      return
-    } finally {
-      ctx.body = { code: 200, msg: '修改成功' }
-    }
+    await queryDB(`select uid from meetu_users where username="${body.username}"`).then(async result => {
+      if (result.length > 0) {
+        ctx.body = { code: 400, msg: '用户名已存在' }
+      } else {
+        await queryDB(`UPDATE meetu_users SET username="${body.username}" WHERE uid=${parseInt(uid)}`).then(result => {
+          ctx.body = { code: 200, msg: '修改成功' }
+        }).catch(err => {
+          ctx.body = { code: 500, msg: '修改失败' }
+        })
+      }
+    }).catch(err => {
+      ctx.body = { code: 500, msg: '查询数据库错误' }
+    })
+
   }
 })
 
@@ -235,14 +241,11 @@ userRouter.post('/updateSign', async (ctx) => {
   if (!body.sign || body.sign.toString().trim().length > 80) {
     ctx.body = { code: 400, msg: '个性签名必须为1~80个字符' }
   } else {
-    try {
-      await queryDB(`UPDATE meetu_users SET sign="${body.sign}" WHERE uid=${parseInt(uid)}`);
-    } catch (e) {
-      ctx.body = { code: 500, msg: '修改失败' }
-      return
-    } finally {
+    await queryDB(`UPDATE meetu_users SET sign="${body.sign}" WHERE uid=${parseInt(uid)}`).then(result => {
       ctx.body = { code: 200, msg: '修改成功' }
-    }
+    }).catch(err => {
+      ctx.body = { code: 500, msg: '修改失败' }
+    })
   }
 })
 
@@ -253,26 +256,17 @@ userRouter.post('/updateGender', async (ctx) => {
   if (!body.gender || (body.gender !== 'male' && body.gender !== 'female')) {
     ctx.body = { code: 400, msg: '性别必须为 male、female 其中之一' }
   } else {
-    let res;
-    try {
-      res = await queryDB(`select gender from meetu_users WHERE uid=${parseInt(uid)}`);
-    } catch (e) {
-      ctx.body = { code: 500, msg: '读取数据库失败' }
-      return
-    } finally {
-      if (res[0].gender === 'male' || res[0].gender === 'female') {
+    await queryDB(`select gender from meetu_users WHERE uid=${parseInt(uid)}`).then(async result => {
+      if (result[0].gender === 'male' || result[0].gender === 'female') {
         ctx.body = { code: 400, msg: '性别只能修改一次哦' }
       } else {
-        try {
-          await queryDB(`UPDATE meetu_users SET gender="${body.gender}" WHERE uid=${parseInt(uid)}`);
-        } catch(e) {
-          ctx.body = { code: 500, msg: '修改失败' }
-          return
-        } finally {
+        await queryDB(`UPDATE meetu_users SET gender="${body.gender}" WHERE uid=${parseInt(uid)}`).then(result => {
           ctx.body = { code: 200, msg: '修改成功' }
-        }
+        }).catch(err => {
+          ctx.body = { code: 500, msg: '修改失败' }
+        })
       }
-    }
+    })
   }
 })
 
@@ -285,14 +279,11 @@ userRouter.post('/updateArea', async (ctx) => {
   if (!body.area || area.length > 30 || area.split('/').length !== 3) {
     ctx.body = { code: 400, msg: '地区格式不合法，正确格式为: 省份/城市/区县。' }
   } else {
-    try {
-      await queryDB(`UPDATE meetu_users SET area="${area}" WHERE uid=${parseInt(uid)}`);
-    } catch (e) {
-      ctx.body = { code: 500, msg: '修改失败' }
-      return
-    } finally {
+    await queryDB(`UPDATE meetu_users SET area="${area}" WHERE uid=${parseInt(uid)}`).then(result => {
       ctx.body = { code: 200, msg: '修改成功' }
-    }
+    }).catch(err => {
+      ctx.body = { code: 500, msg: '修改失败' }
+    })
   }
 })
 
