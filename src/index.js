@@ -1,9 +1,12 @@
 // 引入koa、koa-body、koa-cors
 const Koa = require('koa')
+const { createServer } = require("http")
+const { Server } = require("socket.io")
 const { koaBody } = require('koa-body')
 const cors = require('koa2-cors')
-const path = require('path')
+require('path');
 const { onFileBegin } = require('./utils/onFileBegin')
+const redisClient = require("./utils/redis/redis")
 
 // 引入中间件
 const userMiddleware = require('./middleware/user.middleware')
@@ -33,6 +36,35 @@ app.on("error", (err, ctx) => {
   console.log("server error: ", err, ctx)
 })
 
-app.listen(8000, () => {
+// app.listen(8000, () => {
+//   console.log('server is running on http://127.0.0.1:8000')
+// })
+
+// 将app挂载到httpServer
+const httpServer = createServer(app.callback());
+// socket.io
+const io = new Server(httpServer, { serveClient: false, cors: {
+  origin: ["http://127.0.0.1:8000", "http://127.0.0.1:8080", "http://nightkitty.space3v.work"]
+} });
+
+io.on("connection", (socket) => {
+  console.log("connect", socket.id);
+  socket.on("set-user-id", userId => {
+    socket.uid = userId
+    redisClient(1).setString(userId, socket.id)
+  })
+  socket.on("private-message", async (anotherUserId, msg) => {
+    console.log(anotherUserId, msg);
+    const anotherSocketId = await redisClient(1).getString(anotherUserId)
+    console.log("anotherSocketId", anotherSocketId);
+    socket.to(anotherSocketId).emit("private-message", socket.uid, msg);
+  });
+  socket.on("disconnect", async reason => {
+    console.log("disconnect", socket.id);
+    await redisClient(1).delString(socket.uid)
+  })
+});
+
+httpServer.listen(8000, () => {
   console.log('server is running on http://127.0.0.1:8000')
-})
+});

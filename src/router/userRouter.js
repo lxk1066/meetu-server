@@ -7,7 +7,7 @@ const { encryptPassword } = require('../utils/encryptPassword') // 将明文密�
 const { verifyJwt } = require('../utils/verifyJWT') // 验证jwt_token是否合法
 const sendMail = require('../utils/email.js') // 发送邮件
 const randomCode = require('../utils/randomCode') // 生成随机验证码
-const redisClient = require('../utils/redis/redis-client')
+const redisClient = require('../utils/redis/redis')
 const fs = require('fs')
 const path = require('path')
 const mime = require('mime-types')
@@ -67,10 +67,10 @@ userRouter.post('/reg', async (ctx) => {
   } else {
 
     // 2.验证邮箱
-    if (await redisClient.exists(user.email) === 0) {
+    if (await redisClient(0).exists(user.email) === 0) {
       return ctx.body = { code: 400, msg: '验证码已过期或不存在！' }
     } else {
-      const verifyCode = await redisClient.getString(user.email)
+      const verifyCode = await redisClient(0).getString(user.email)
       if (String(user.emailVerifyCode) !== verifyCode) return ctx.body = { code: 400, msg: '验证码无效！' }
     }
 
@@ -80,7 +80,7 @@ userRouter.post('/reg', async (ctx) => {
 
     if (res1.length === 0 && res2.length === 0) {
       // 允许注册
-      await redisClient.delString(user.email)
+      await redisClient(0).delString(user.email)
       await queryDB(`INSERT INTO meetu_users 
                       (username, password, email, profile, gender, sign, area) 
                       VALUES("${user.username}", "${encryptPassword(user.password)}", "${user.email}", 
@@ -116,15 +116,15 @@ userRouter.get('/verifyToken', async (ctx) => {
 // 发送邮件
 userRouter.post('/email', async (ctx) => {
   const emailBox = ctx.request.body.email
-  if (await redisClient.exists(emailBox)) {
+  if (await redisClient(0).exists(emailBox)) {
     ctx.body = { code: 400, msg: "验证码已存在" }
   } else {
     // 生成随机验证码
     const verifyCode = randomCode(6)
     // 将验证码存储到redis中
-    let setStringResult = await redisClient.setString(emailBox, verifyCode, 60 * 5)
+    let setStringResult = await redisClient(0).setString(emailBox, verifyCode, 60 * 5)
     while (setStringResult !== 'OK') {
-      setStringResult = await redisClient.setString(emailBox, verifyCode, 60 * 5)
+      setStringResult = await redisClient(0).setString(emailBox, verifyCode, 60 * 5)
     }
     // 发送邮件
     const emailContent = `<p>尊敬的用户你好，你正在[Meetu]申请注册账号，验证码：${verifyCode}，5分钟内有效。请确认是否为本人操作，如果不是，请忽略本邮件。</p>
@@ -285,6 +285,12 @@ userRouter.post('/updateArea', async (ctx) => {
       ctx.body = { code: 500, msg: '修改失败' }
     })
   }
+})
+
+// 将每个用户的id返回
+userRouter.post('/getAllUserId', async (ctx) => {
+  const res = await queryDB('select uid from meetu_users');
+  ctx.body = { code: 200, data: res }
 })
 
 module.exports = userRouter
