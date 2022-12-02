@@ -49,15 +49,38 @@ const io = new Server(httpServer, { serveClient: false, cors: {
 
 io.on("connection", (socket) => {
   console.log("connect", socket.id);
-  socket.on("set-user-id", userId => {
+  socket.on("set-user-id", async userId => {
+    console.log("set-user-id", userId)
     socket.uid = userId
-    redisClient(1).setString(userId, socket.id)
+    await redisClient(1).setString(userId, socket.id)
   })
+
+  socket.on("online-message", async (anotherUserId) => {
+    console.log("online-message", anotherUserId);
+    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
+      if (anotherSocketId) socket.to(anotherSocketId).emit("online-message-server", true);
+    })
+  });
+  // 后进房间的人，无法收到先进入房间的人的在线提示，通过这个事件 让先进房间的人在收到对方在线提示时返回给后进房间的人
+  socket.on("online-message-other", async (anotherUserId) => {
+    console.log("online-message-other", anotherUserId);
+    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
+      if (anotherSocketId) socket.to(anotherSocketId).emit("online-message-other", true);
+    })
+  })
+  // 这里的 ownUserId 指当前离线的用户id，anotherUserId 指要提醒给另一个用户的用户id
+  socket.on("offline-message", async (ownUserId, anotherUserId) => {
+    console.log("online-message-other", ownUserId);
+    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
+      if (anotherSocketId) socket.to(anotherSocketId).emit("offline-message-server", ownUserId);
+    })
+  })
+
   socket.on("private-message", async (anotherUserId, msg) => {
-    console.log(anotherUserId, msg);
-    const anotherSocketId = await redisClient(1).getString(anotherUserId)
-    console.log("anotherSocketId", anotherSocketId);
-    socket.to(anotherSocketId).emit("private-message", socket.uid, msg);
+    console.log("private-message", anotherUserId, msg);
+    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
+      if (anotherSocketId) socket.to(anotherSocketId).emit("private-message", socket.uid, msg);
+    })
   });
   socket.on("disconnect", async reason => {
     console.log("disconnect", socket.id);

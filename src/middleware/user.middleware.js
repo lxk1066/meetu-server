@@ -7,16 +7,12 @@ userMiddleware = async (ctx, next) => {
     const token = await ctx.request.get('authorization');
 
     if (token) {
-      let res;
-      try {
-        res = await verifyJwt(token)
-      } catch (e) {
-        ctx.body = { code: 403, msg: 'token错误' }
-        return
-      } finally {
+      await verifyJwt(token).then(async res => {
         ctx.uid = res.uid
         await next()
-      }
+      }).catch(err => {
+        ctx.body = { code: 403, msg: 'token错误' }
+      })
 
     } else {
       ctx.body = { code: 403, msg: '无权限' }
