@@ -193,6 +193,22 @@ userRouter.get('/getPersonInfo/:uid', async (ctx) => {
   }
 })
 
+// 获取用户的邮箱地址
+userRouter.post('/getMailbox', async (ctx) => {
+  const uid = ctx.uid;
+  const res = await queryDB(`select email from meetu_users where uid=${uid}`);
+  const email = res[0].email
+  const number = email.slice(0, email.indexOf('@'))
+  const suffix = email.slice(email.indexOf('@'), email.length)
+
+  ctx.body = {
+    code: 200,
+    data: {
+      email: `${number.slice(0, 3)}****${number.slice(number.length - 3, number.length)}${suffix}`
+    }
+  }
+})
+
 // 获取头像
 userRouter.get('/getProfile/:filename', async (ctx) => {
   const filename = ctx.params.filename;
@@ -291,6 +307,34 @@ userRouter.post('/updateArea', async (ctx) => {
 userRouter.post('/getAllUserId', async (ctx) => {
   const res = await queryDB('select uid from meetu_users');
   ctx.body = { code: 200, data: res }
+})
+
+// 发送`修改邮箱`的验证码邮件
+userRouter.post('/ModifyMailboxLetter', async (ctx) => {
+  const uid = ctx.uid;
+  const res = await queryDB(`select email from meetu_users where uid=${uid}`);
+  const email = res[0].email;
+  if (await redisClient(2).exists(email)) {
+    ctx.body = { code: 400, msg: "验证码已存在" }
+  } else {
+    // 生成随机验证码
+    const verifyCode = randomCode(6)
+    // 将验证码存储到redis中
+    let setStringResult = await redisClient(2).setString(email, verifyCode, 60 * 5)
+
+    while (setStringResult !== 'OK') {
+      setStringResult = await redisClient(2).setString(email, verifyCode, 60 * 5)
+    }
+    // 发送邮件
+    const emailContent = `<p>尊敬的用户你好，你正在[Meetu]申请修改邮箱地址，验证码：${verifyCode}，5分钟内有效。请确认是否为本人操作，如果不是，请忽略本邮件。</p>
+                          <h1 style="font-size: 25px;text-align: left;">${verifyCode}</h1>`
+    const sendMailResult = await sendMail('[Meetu]验证码', email, emailContent)
+    if (sendMailResult.err) {
+      ctx.body = { code: 403, msg: sendMailResult.err }
+    } else if (sendMailResult.data) {
+      ctx.body = { code: 200, msg: '邮件发送中，请注意查收！', data: sendMailResult.data }
+    }
+  }
 })
 
 module.exports = userRouter
