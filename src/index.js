@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
   socket.on("private-message", async (anotherUserId, msg, time) => {
     console.log("private-message", anotherUserId, msg);
     await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.to(anotherSocketId).emit("private-message", socket.uid, msg, time);
+      if (anotherSocketId) socket.to(anotherSocketId).emit("private-message", socket.uid, anotherUserId, msg, time);
     })
   });
   socket.on("disconnect", async reason => {
