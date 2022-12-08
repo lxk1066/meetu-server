@@ -55,36 +55,24 @@ io.on("connection", (socket) => {
     await redisClient(1).setString(userId, socket.id)
   })
 
-  socket.on("online-message", async (anotherUserId) => {
-    console.log("online-message", anotherUserId);
+  socket.on("online-message", async anotherUserId => {
     await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.to(anotherSocketId).emit("online-message-server", true);
-    })
-  });
-  // 后进房间的人，无法收到先进入房间的人的在线提示，通过这个事件 让先进房间的人在收到对方在线提示时返回给后进房间的人
-  socket.on("online-message-other", async (anotherUserId) => {
-    console.log("online-message-other", anotherUserId);
-    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.to(anotherSocketId).emit("online-message-other", true);
-    })
-  })
-  // 这里的 ownUserId 指当前离线的用户id，anotherUserId 指要提醒给另一个用户的用户id
-  socket.on("offline-message", async (ownUserId, anotherUserId) => {
-    console.log("online-message-other", ownUserId);
-    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.to(anotherSocketId).emit("offline-message-server", ownUserId);
+      if (anotherSocketId) socket.emit(`online-message-reply-${socket.uid}`, true)
+      else socket.emit(`online-message-reply-${socket.uid}`, false)
+    }).catch(err => {
+      socket.emit(`online-message-reply-${socket.uid}`, false)
     })
   })
 
-  socket.on("private-message", async (anotherUserId, msg) => {
+  socket.on("private-message", async (anotherUserId, msg, time) => {
     console.log("private-message", anotherUserId, msg);
     await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.to(anotherSocketId).emit("private-message", socket.uid, msg);
+      if (anotherSocketId) socket.to(anotherSocketId).emit("private-message", socket.uid, msg, time);
     })
   });
   socket.on("disconnect", async reason => {
     console.log("disconnect", socket.id);
-    await redisClient(1).delString(socket.uid)
+    await redisClient(1).delString(socket.uid).catch(() => {})
   })
 });
 

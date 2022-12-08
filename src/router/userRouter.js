@@ -303,6 +303,24 @@ userRouter.post('/updateArea', async (ctx) => {
   }
 })
 
+// 修改邮箱地址
+userRouter.post('/modifyMailbox', async (ctx) => {
+  const uid = ctx.uid;
+  const body = ctx.request.body;
+  const res = await queryDB(`select email from meetu_users where uid=${uid}`);
+  const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
+  if (!body.newEmail || !emailPattern.test(body.newEmail)) {
+    ctx.body = { code: 400, msg: '邮箱格式不合法' }
+  } else {
+    await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`).then(async result => {
+      if (res[0].email) await redisClient(2).delString(res[0].email)
+      ctx.body = { code: 200, msg: '修改成功' }
+    }).catch(err => {
+      ctx.body = { code: 500, msg: '修改失败' }
+    })
+  }
+})
+
 // 将每个用户的id返回
 userRouter.post('/getAllUserId', async (ctx) => {
   const res = await queryDB('select uid from meetu_users');
