@@ -15,7 +15,7 @@ function redisClient (db) {
     url: url
   });
 
-  redisClient.on('ready', () => console.log(`connect to ${url}, redis is ready...`)
+  redisClient.on('ready', () => console.log(`connect to redis://:xxxxxxxx@${redis.host}:${redis.port}/${db}, redis is ready...`)
   )
   redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
