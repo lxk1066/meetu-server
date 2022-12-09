@@ -56,12 +56,21 @@ io.on("connection", (socket) => {
   })
 
   socket.on("online-message", async anotherUserId => {
-    await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
-      if (anotherSocketId) socket.emit(`online-message-reply-${socket.uid}`, true)
-      else socket.emit(`online-message-reply-${socket.uid}`, false)
-    }).catch(err => {
-      socket.emit(`online-message-reply-${socket.uid}`, false)
-    })
+    if (anotherUserId === socket.uid) {
+      // 自己查询自己的在线状态
+      await redisClient(1).getString(socket.uid).then(socketId => {
+        if (socketId) socket.emit('online-message-reply-own', true)
+        else socket.emit('online-message-reply-own', false)
+      }).catch(() => { socket.emit('online-message-reply-own', false) })
+    } else {
+      // 查询其他人的在线状态
+      await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
+        if (anotherSocketId) socket.emit(`online-message-reply-${socket.uid}`, true)
+        else socket.emit(`online-message-reply-${socket.uid}`, false)
+      }).catch(err => {
+        socket.emit(`online-message-reply-${socket.uid}`, false)
+      })
+    }
   })
 
   socket.on("private-message", async (anotherUserId, msg, time) => {
