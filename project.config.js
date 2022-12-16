@@ -25,4 +25,7 @@ const EmailAccount = {
 // jwt secret
 const jwtSecret = "xxxxxxxx"
 
-module.exports = { DB, redis, EmailAccount, jwtSecret }
+// 前端的URL
+const siteUrl = "xxxxxxxx"
+
+module.exports = { DB, redis, EmailAccount, jwtSecret, siteUrl }

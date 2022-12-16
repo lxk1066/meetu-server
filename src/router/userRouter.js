@@ -2,7 +2,7 @@ const Router = require('koa-router')
 const userRouter = new Router({ prefix: '/user' })
 const queryDB = require('../model/db')
 const jwt = require('../utils/jwt') // 生成jwt
-const { jwtSecret } = require('../../project.config')
+const { jwtSecret, siteUrl } = require('../../project.config')
 const { encryptPassword } = require('../utils/encryptPassword') // 将明文密码用sha256加密
 const { verifyJwt } = require('../utils/verifyJWT') // 验证jwt_token是否合法
 const sendMail = require('../utils/email.js') // 发送邮件
@@ -147,7 +147,7 @@ userRouter.post('/upload', async (ctx) => {
 
   if (files[key].length) {
     files[key].forEach((item, index) => {
-      if (index !== 0) { fs.unlink(item.filepath, (err) => {}) }
+      if (index !== 0) { fs.unlink(item.filepath, () => {}) }
     })
   }
 
@@ -166,7 +166,7 @@ userRouter.post('/upload', async (ctx) => {
     await queryDB(`UPDATE meetu_users SET profile="${newProfile}" WHERE uid=${parseInt(uid)}`)
 
     if (res[0].profile !== 'default.png') {
-      fs.unlink(path.join(__dirname, '../../media/profile/', res[0].profile), (err) => {})
+      fs.unlink(path.join(__dirname, '../../media/profile/', res[0].profile), () => {})
     }
 
     ctx.body = { code: 200, msg: '上传成功' }
@@ -237,16 +237,70 @@ userRouter.post('/updateUsername', async (ctx) => {
       if (result.length > 0) {
         ctx.body = { code: 400, msg: '用户名已存在' }
       } else {
-        await queryDB(`UPDATE meetu_users SET username="${body.username}" WHERE uid=${parseInt(uid)}`).then(result => {
+        await queryDB(`UPDATE meetu_users SET username="${body.username}" WHERE uid=${parseInt(uid)}`).then(() => {
           ctx.body = { code: 200, msg: '修改成功' }
-        }).catch(err => {
+        }).catch(() => {
           ctx.body = { code: 500, msg: '修改失败' }
         })
       }
-    }).catch(err => {
+    }).catch(() => {
       ctx.body = { code: 500, msg: '查询数据库错误' }
     })
 
+  }
+})
+
+// 发送`修改用户密码`的邮件
+userRouter.post('/updatePasswordEmail', async (ctx) => {
+  const uid = ctx.uid;
+  const res = await queryDB(`select email from meetu_users where uid=${uid}`);
+  const email = res[0].email;
+  // 生成唯一的链接：前端路由 + 唯一加密标识。加密标识由jwt生成，将小数点替换为短横线
+  const token = await jwt.sign({ uid }, jwtSecret, { expiresIn: '72h' })
+  await redisClient(2).setString(uid.toString(), token, 60 * 60 * 72)
+  const url = path.join(siteUrl, '/#/changePassword/', token.replace(/[.]/g, '*'))
+  // 发送邮件
+  const emailContent = `<p>尊敬的用户请注意，你正在[Meetu]申请修改账号的密码，请点击下方链接 前往修改密码，该链接72小时内有效，修改成功后立即失效。请妥善保管本邮件，切勿将修改链接告知他人。</p>
+                        <a href="${url}" style="font-size: 15px;text-align: left;">${url}</a>`
+  const sendMailResult = await sendMail('[Meetu]修改密码', email, emailContent)
+
+  if (sendMailResult.err) {
+    ctx.body = { code: 403, msg: sendMailResult.err }
+  } else if (sendMailResult.data) {
+    ctx.body = { code: 200, msg: '邮件发送中，请注意查收！', data: sendMailResult.data }
+  }
+})
+
+// 修改用户密码
+userRouter.post('/changePassword', async (ctx) => {
+  const { token, password } = ctx.request.body;
+  const restoreToken = token.replace(/[*]/g, '.') // 还原token
+  if (restoreToken) {
+    console.log(restoreToken)
+    await verifyJwt(restoreToken).then(async (results) => {
+      const uid = results.uid
+      await redisClient(2).getString(uid.toString()).then(async (token) => {
+        if (token === restoreToken) {
+          if (/^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9,._!@#$^&*]{8,20}$/.test(password.trim())) {
+            // 允许修改密码
+            await queryDB(`UPDATE meetu_users SET password="${encryptPassword(password)}" WHERE uid=${uid}`).then(async () => {
+              ctx.body = { code: 200, msg: '修改成功' }
+              // 立即删除redis中的记录
+              await redisClient(2).delString(uid.toString()).catch(() => {})
+            }).catch(() => {
+              ctx.body = { code: 500, msg: '修改失败' }
+            })
+          } else {
+            ctx.body = { code: 403, msg: "密码格式错误" }
+          }
+        } else { ctx.body = { code: 4031, msg: "token已过期" } }
+      }).catch(() => {
+        ctx.body = { code: 4032, msg: "token已过期" }
+      })
+    }).catch((err) => {
+      console.log(err)
+      ctx.body = { code: 403, msg: "无效Token" }
+    })
   }
 })
 
@@ -257,9 +311,9 @@ userRouter.post('/updateSign', async (ctx) => {
   if (!body.sign || body.sign.toString().trim().length > 80) {
     ctx.body = { code: 400, msg: '个性签名必须为1~80个字符' }
   } else {
-    await queryDB(`UPDATE meetu_users SET sign="${body.sign}" WHERE uid=${parseInt(uid)}`).then(result => {
+    await queryDB(`UPDATE meetu_users SET sign="${body.sign}" WHERE uid=${parseInt(uid)}`).then(() => {
       ctx.body = { code: 200, msg: '修改成功' }
-    }).catch(err => {
+    }).catch(() => {
       ctx.body = { code: 500, msg: '修改失败' }
     })
   }
@@ -276,9 +330,9 @@ userRouter.post('/updateGender', async (ctx) => {
       if (result[0].gender === 'male' || result[0].gender === 'female') {
         ctx.body = { code: 400, msg: '性别只能修改一次哦' }
       } else {
-        await queryDB(`UPDATE meetu_users SET gender="${body.gender}" WHERE uid=${parseInt(uid)}`).then(result => {
+        await queryDB(`UPDATE meetu_users SET gender="${body.gender}" WHERE uid=${parseInt(uid)}`).then(() => {
           ctx.body = { code: 200, msg: '修改成功' }
-        }).catch(err => {
+        }).catch(() => {
           ctx.body = { code: 500, msg: '修改失败' }
         })
       }
@@ -295,9 +349,9 @@ userRouter.post('/updateArea', async (ctx) => {
   if (!body.area || area.length > 30 || area.split('/').length !== 3) {
     ctx.body = { code: 400, msg: '地区格式不合法，正确格式为: 省份/城市/区县。' }
   } else {
-    await queryDB(`UPDATE meetu_users SET area="${area}" WHERE uid=${parseInt(uid)}`).then(result => {
+    await queryDB(`UPDATE meetu_users SET area="${area}" WHERE uid=${parseInt(uid)}`).then(() => {
       ctx.body = { code: 200, msg: '修改成功' }
-    }).catch(err => {
+    }).catch(() => {
       ctx.body = { code: 500, msg: '修改失败' }
     })
   }
@@ -312,10 +366,10 @@ userRouter.post('/modifyMailbox', async (ctx) => {
   if (!body.newEmail || !emailPattern.test(body.newEmail)) {
     ctx.body = { code: 400, msg: '邮箱格式不合法' }
   } else {
-    await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`).then(async result => {
+    await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`).then(async () => {
       if (res[0].email) await redisClient(2).delString(res[0].email)
       ctx.body = { code: 200, msg: '修改成功' }
-    }).catch(err => {
+    }).catch(() => {
       ctx.body = { code: 500, msg: '修改失败' }
     })
   }
