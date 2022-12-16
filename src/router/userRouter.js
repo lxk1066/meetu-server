@@ -258,7 +258,7 @@ userRouter.post('/updatePasswordEmail', async (ctx) => {
   // 生成唯一的链接：前端路由 + 唯一加密标识。加密标识由jwt生成，将小数点替换为短横线
   const token = await jwt.sign({ uid }, jwtSecret, { expiresIn: '72h' })
   await redisClient(2).setString(uid.toString(), token, 60 * 60 * 72)
-  const url = path.join(siteUrl, '/#/changePassword/', token.replace(/[.]/g, '*'))
+  const { href: url } = new URL(`/#/changePassword/${token.replace(/[.]/g, '*')}`, siteUrl)
   // 发送邮件
   const emailContent = `<p>尊敬的用户请注意，你正在[Meetu]申请修改账号的密码，请点击下方链接 前往修改密码，该链接72小时内有效，修改成功后立即失效。请妥善保管本邮件，切勿将修改链接告知他人。</p>
                         <a href="${url}" style="font-size: 15px;text-align: left;">${url}</a>`
