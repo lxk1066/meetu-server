@@ -365,12 +365,22 @@ userRouter.post('/modifyMailbox', async (ctx) => {
   const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
   if (!body.newEmail || !emailPattern.test(body.newEmail)) {
     ctx.body = { code: 400, msg: '邮箱格式不合法' }
+  } else if (!body.verifyCode) {
+    ctx.body = { code: 400, msg: '缺少验证码' }
   } else {
-    await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`).then(async () => {
-      if (res[0].email) await redisClient(2).delString(res[0].email)
-      ctx.body = { code: 200, msg: '修改成功' }
+    await redisClient(2).getString(body.newEmail.toString()).then(async result => {
+      if (result === body.verifyCode) {
+        await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`).then(async () => {
+          if (res[0].email) await redisClient(2).delString(res[0].email)
+          ctx.body = { code: 200, msg: '修改成功' }
+        }).catch(() => {
+          ctx.body = { code: 500, msg: '修改失败' }
+        })
+      } else {
+        ctx.body = { code: 400, msg: '验证码无效' }
+      }
     }).catch(() => {
-      ctx.body = { code: 500, msg: '修改失败' }
+      ctx.body = { code: 400, msg: '验证码无效' }
     })
   }
 })
