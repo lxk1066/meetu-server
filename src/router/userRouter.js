@@ -479,7 +479,7 @@ userRouter.post('/updateMUID', async ctx => {
               ctx.body = { code: 404, msg: '距离上次修改间隔小于365天，不可修改' }
             }
           } else {
-            await queryDB(`UPDATE meetu_users_muid SET muid="${body.newMUID}",updated_time="${+new Date()}" WHERE user_id="${uid}"`).then(() => {
+            await queryDB(`INSERT INTO meetu_users_muid VALUES ("${body.newMUID}", "${uid}", "${+new Date()}")`).then(() => {
               ctx.body = { code: 200, msg: '修改成功' }
             }).catch(err => {
               console.log("updateMUID error:", err);
