@@ -7,6 +7,7 @@ const { encryptPassword } = require('../utils/encryptPassword') // 将明文密�
 const { verifyJwt } = require('../utils/verifyJWT') // 验证jwt_token是否合法
 const sendMail = require('../utils/email.js') // 发送邮件
 const randomCode = require('../utils/randomCode') // 生成随机验证码
+const randomStr = require('../utils/randomStr')
 const redisClient = require('../utils/redis/redis')
 const fs = require('fs')
 const path = require('path')
@@ -80,13 +81,23 @@ userRouter.post('/reg', async (ctx) => {
 
     if (res1.length === 0 && res2.length === 0) {
       // 允许注册
+      const createdTime = +new Date();
       await redisClient(0).delString(user.email)
       await queryDB(`INSERT INTO meetu_users 
-                      (username, password, email, profile, gender, sign, area) 
+                      (username, password, email, profile, gender, sign, area, created_time) 
                       VALUES("${user.username}", "${encryptPassword(user.password)}", "${user.email}", 
-                      "default.png", "secrecy", "这个人很懒，什么都没有写。", "secrecy")`)
+                      "default.png", "secrecy", "这个人很懒，什么都没有写。", "secrecy", "${createdTime}")`)
+            .then(async ({ insertId }) => {
+              // 向 meetu_users_muid表中插入默认的MUID
+              await queryDB(`INSERT INTO meetu_users_muid VALUES ("${insertId}_${randomStr(10-insertId.toString().length)}", "${insertId}", "${createdTime}")`)
+                    .then(() => {
+                      ctx.body = { code: 200, msg: '注册成功' }
+                    }).catch(err => {
+                      console.log("err", err)
+                      ctx.body = { code: 500, msg: '数据插入失败, 请前往设置中心手动配置MUID!' }
+                    })
+            })
 
-      ctx.body = { code: 200, msg: '注册成功' }
     } else {
       if (res1.length) {
         // 用户名已存在
@@ -178,7 +189,10 @@ userRouter.post('/upload', async (ctx) => {
 // 获取个人信息
 userRouter.get('/getPersonInfo/:uid', async (ctx) => {
   const uid = ctx.params.uid;
-  const res = await queryDB(`select username,profile,gender,sign,area from meetu_users where uid=${uid}`);
+  const res = await queryDB(`select
+                      users.username,users.profile,users.gender,users.sign,users.area,users_muid.muid
+                      from meetu_users as users left join meetu_users_muid as users_muid on users_muid.user_id=${uid}
+                      where users.uid=${uid};`);
   // console.log(res);
 
   ctx.body = {
@@ -188,7 +202,8 @@ userRouter.get('/getPersonInfo/:uid', async (ctx) => {
       username: res[0].username,
       gender: res[0].gender,
       sign: res[0].sign,
-      area: res[0].area
+      area: res[0].area,
+      muid: res[0].muid
     }
   }
 })
@@ -416,6 +431,64 @@ userRouter.post('/ModifyMailboxLetter', async (ctx) => {
     } else if (sendMailResult.data) {
       ctx.body = { code: 200, msg: '邮件发送中，请注意查收！', data: sendMailResult.data }
     }
+  }
+})
+
+// 获取用户的MUID
+userRouter.get('/getUserMUID/:uid', async ctx => {
+  const uid = ctx.request.params.uid;
+  await queryDB(`select muid from meetu_users_muid where user_id="${uid}"`).then(res => {
+    if (res.length > 0) {
+      ctx.body = { code: 200, data: { muid: res[0].muid } }
+    } else {
+      ctx.body = { code: 404, msg: '未找到该用户的MUID' }
+    }
+  }).catch(err => {
+    console.log('getUserMUID error:', err)
+    ctx.body = { code: 400, msg: '查询有误' }
+  })
+})
+
+// 修改用户的MUID
+userRouter.post('/updateMUID', async ctx => {
+  const uid = ctx.uid;
+  const body = ctx.request.body;
+  const muidPattern = /\d{6,10}|[a-z0-9]{6,10}/;
+  if (!body.newMUID || !muidPattern.test(body.newMUID)) {
+    ctx.body = { code: 400, msg: 'MUID仅支持6~10位的纯数字 或 小写英文字母+数字。' }
+  } else {
+    // 判断MUID是否已经被占用
+    await queryDB(`select user_id from meetu_users_muid where muid="${body.newMUID}" limit 1`).then(async res => {
+      if (res.length > 0) {
+        // MUID已被占用
+        if (res[0].user_id === uid) ctx.body = { code: 400, msg: '新MUID不能与旧MUID相同' };
+        else ctx.body = { code: 500, msg: 'MUID已被占用' }
+      } else {
+        // 允许修改MUID
+        await queryDB(`select updated_time from meetu_users_muid where user_id="${uid}"`).then(async result => {
+          if (result.length > 0) {
+            // 距离上次修改时间间隔大于365天，允许修改
+            if ((+new Date() - parseInt(result[0].updated_time)) > 86400000 * 365) {
+              await queryDB(`UPDATE meetu_users_muid SET muid="${body.newMUID}",updated_time="${+new Date()}" WHERE user_id="${uid}"`).then(() => {
+                ctx.body = { code: 200, msg: '修改成功' }
+              }).catch(err => {
+                console.log("updateMUID error:", err);
+                ctx.body = { code: 500, msg: '修改失败' }
+              })
+            } else {
+              ctx.body = { code: 404, msg: '距离上次修改间隔小于365天，不可修改' }
+            }
+          } else {
+            await queryDB(`UPDATE meetu_users_muid SET muid="${body.newMUID}",updated_time="${+new Date()}" WHERE user_id="${uid}"`).then(() => {
+              ctx.body = { code: 200, msg: '修改成功' }
+            }).catch(err => {
+              console.log("updateMUID error:", err);
+              ctx.body = { code: 500, msg: '修改失败' }
+            })
+          }
+        })
+      }
+    })
   }
 })
 
