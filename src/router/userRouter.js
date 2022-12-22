@@ -89,7 +89,7 @@ userRouter.post('/reg', async (ctx) => {
                       "default.png", "secrecy", "这个人很懒，什么都没有写。", "secrecy", "${createdTime}")`)
             .then(async ({ insertId }) => {
               // 向 meetu_users_muid表中插入默认的MUID
-              await queryDB(`INSERT INTO meetu_users_muid VALUES ("${insertId}_${randomStr(10-insertId.toString().length)}", "${insertId}", "${createdTime}")`)
+              await queryDB(`INSERT INTO meetu_users_muid VALUES ("${insertId}_${randomStr(10-insertId.toString().length-1)}", "${insertId}", "${createdTime}")`)
                     .then(() => {
                       ctx.body = { code: 200, msg: '注册成功' }
                     }).catch(err => {
