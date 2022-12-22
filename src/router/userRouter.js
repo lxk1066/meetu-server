@@ -453,7 +453,7 @@ userRouter.get('/getUserMUID/:uid', async ctx => {
 userRouter.post('/updateMUID', async ctx => {
   const uid = ctx.uid;
   const body = ctx.request.body;
-  const muidPattern = /\d{6,10}|[a-z0-9]{6,10}/;
+  const muidPattern = /^[a-z0-9]{6,10}$/;
   if (!body.newMUID || !muidPattern.test(body.newMUID)) {
     ctx.body = { code: 400, msg: 'MUID仅支持6~10位的纯数字 或 小写英文字母+数字。' }
   } else {
