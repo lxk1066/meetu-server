@@ -250,7 +250,7 @@ userRouter.post('/updateUsername', async (ctx) => {
   const body = ctx.request.body;
   if (!body.username || body.username.toString().length < 4 || body.username.toString().length > 30) {
     ctx.body = { code: 400, msg: '用户名必须为4~30个字符' }
-  } else if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.username.toString())) {
+  } else if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(body.username.toString())) {
     ctx.body = { code: 400, msg: '用户名不能是邮箱格式' }
   } else {
     await queryDB(`select uid from meetu_users where username="${body.username}"`).then(async result => {
