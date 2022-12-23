@@ -50,6 +50,7 @@ userRouter.post('/login', async (ctx) => {
 userRouter.post('/reg', async (ctx) => {
   // 1.拿到请求体中的用户名和密码并验证
   const user = ctx.request.body;
+  const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
 
   if (!user.username) {
     ctx.body = { code: 400, msg: '用户名不得为空' }
@@ -60,8 +61,10 @@ userRouter.post('/reg', async (ctx) => {
   } else if (!user.emailVerifyCode) {
     ctx.body = { code: 400, msg: '验证码不得为空' }
   } else if (user.username.toString().length < 4 || user.username.toString().length > 30) {
-    ctx.body = { code: 400, msg: '用户名不得少于4个字符' }
-  } else if (!/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.email.toString())) {
+    ctx.body = { code: 400, msg: '用户名必须为4~30个字符' }
+  } else if (emailPattern.test(user.username.toString())) {
+    ctx.body = { code: 400, msg: '用户名不能是邮箱格式' }
+  } else if (!emailPattern.test(user.email.toString())) {
     ctx.body = { code: 400, msg: '邮箱格式错误！' }
   } else if (!/^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9,._!@#$^&*]{8,20}$/.test(user.password.toString())) {
     ctx.body = { code: 400, msg: '密码8~20位，必须包含大小写字母和数字，特殊字符可选(,._!@#$^&*)' }
@@ -247,6 +250,8 @@ userRouter.post('/updateUsername', async (ctx) => {
   const body = ctx.request.body;
   if (!body.username || body.username.toString().length < 4 || body.username.toString().length > 30) {
     ctx.body = { code: 400, msg: '用户名必须为4~30个字符' }
+  } else if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.username.toString())) {
+    ctx.body = { code: 400, msg: '用户名不能是邮箱格式' }
   } else {
     await queryDB(`select uid from meetu_users where username="${body.username}"`).then(async result => {
       if (result.length > 0) {
