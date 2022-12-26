@@ -497,4 +497,20 @@ userRouter.post('/updateMUID', async ctx => {
   }
 })
 
+// 搜索MUID查找用户
+userRouter.post('/searchMUID', async ctx => {
+  const body = ctx.request.body;
+  if (!body.muid) {
+    ctx.body = { code: 400, msg: '缺少必需参数muid' }
+  } else {
+    await queryDB(`select user_id from meetu_users_muid where muid like "%${body.muid}%"`).then(res => {
+      const result = res.map(item => item.user_id)
+      ctx.body = { code: 200, data: { users: result } }
+    }).catch(err => {
+      console.log("searchMUID error:", err);
+      ctx.body = { code: 500, msg: '搜索错误' }
+    })
+  }
+})
+
 module.exports = userRouter
