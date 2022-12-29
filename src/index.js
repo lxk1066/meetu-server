@@ -7,6 +7,7 @@ const cors = require('koa2-cors')
 require('path');
 const { onFileBegin } = require('./utils/onFileBegin')
 const redisClient = require("./utils/redis/redis")
+const { origin } = require('../project.config')
 
 // 引入中间件
 const userMiddleware = require('./middleware/user.middleware')
@@ -44,7 +45,7 @@ app.on("error", (err, ctx) => {
 const httpServer = createServer(app.callback());
 // socket.io
 const io = new Server(httpServer, { serveClient: false, cors: {
-  origin: ["http://127.0.0.1:8000", "http://127.0.0.1:8080", "http://nightkitty.space3v.work"]
+  origin: origin
 } });
 
 io.on("connection", (socket) => {

@@ -1,3 +1,8 @@
+// socket.io CORS origin host
+const origin = [
+  "xxxxxxxx"
+]
+
 // 数据库的配置信息
 const DB = {
   host: "xxxxxxxx",
@@ -28,4 +33,4 @@ const jwtSecret = "xxxxxxxx"
 // 前端的URL
 const siteUrl = "xxxxxxxx"
 
-module.exports = { DB, redis, EmailAccount, jwtSecret, siteUrl }
+module.exports = { origin, DB, redis, EmailAccount, jwtSecret, siteUrl }
