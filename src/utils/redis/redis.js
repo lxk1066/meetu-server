@@ -55,11 +55,61 @@ function redisClient (db) {
     return res
   }
 
+  async function RPush(key, value) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['RPUSH', key, value]);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
+  async function LPop(key) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['LPOP', key]);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
+  async function LRem(key, count, value) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['LREM', key, count.toString(), value]);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
+  async function LRange(key) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['LRANGE', key, '0', '-1']);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
+  async function LLen(key) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['LLEN', key]);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
   return {
     getString,
     setString,
     delString,
-    exists
+    exists,
+    RPush,
+    LPop,
+    LRem,
+    LRange,
+    LLen
   }
 }
 

@@ -1,6 +1,7 @@
 const Router = require('koa-router')
 const userRouter = new Router({ prefix: '/user' })
 const user = require('../server/user')
+const notice = require('../server/notice')
 
 // 用户登录
 userRouter.post('/login', user.login)
@@ -70,5 +71,14 @@ userRouter.post('/getAllFriends', user.getAllFriends)
 
 // 根据MUID来查询该用户的个人信息
 userRouter.get('/getMuidUserInfo/:muid', user.getMuidUserInfo)
+
+// 发送好友申请
+userRouter.post('/addFriendRequest', notice.addFriendRequest)
+
+// 获取当前用户的所有通知数量
+userRouter.post('/getAllNoticesNumber', notice.getAllNoticesNumber)
+
+// 获取当前用户的所有通知
+userRouter.post('/getAllNotices', notice.getAllNotices)
 
 module.exports = userRouter
