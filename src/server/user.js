@@ -536,7 +536,7 @@ const isOwnFriend = async ctx => {
 // 获取当前用户的好友列表
 const getAllFriends = async ctx => {
   const uid = ctx.uid;
-  await queryDB(`select friend_muid from meetu_users_relation where user_muid=(select muid from meetu_users_muid where user_id='${uid}') UNION ALL
+  await queryDB(`select friend_muid from meetu_users_relation where user_muid=(select muid from meetu_users_muid where user_id='${uid}') UNION
               select user_muid from meetu_users_relation where friend_muid=(select muid from meetu_users_muid where user_id='${uid}');`)
     .then(result => {
       const friendsArr = result.map(item => item.friend_muid)

@@ -14,8 +14,9 @@ const addFriendRequest = async ctx => {
         const from_muid = result[0].user_id === uid ? result[0].muid : result[1].muid;
         const to_muid = body.muid;
         const base64Str = Buffer.from(body.message).toString("base64"); // 将中文转换成base64
+        const time = +new Date();
         const res = await redisClient(3).RPush(to_muid, JSON.stringify({
-          type: 'addFriend', from: from_muid, to: to_muid, message: base64Str, hasRead: false, time: +new Date()
+          id: `${to_muid}_${time}`, type: 'addFriend', from: from_muid, to: to_muid, message: base64Str, time: time
         }))
         if (res > 0) ctx.body = { code: 200, msg: '发送成功' }
         else ctx.body = { code: 400, msg: '发送失败' }
@@ -24,6 +25,76 @@ const addFriendRequest = async ctx => {
       console.log('addFriendRequest error: ', err);
       ctx.body = { code: 500, msg: '服务器错误' }
     })
+  }
+}
+
+// 同意好友请求
+const agreeFriendRequest = async ctx => {
+  const uid = ctx.uid;
+  const body = ctx.request.body;
+  if (!body || !body.noticeId) {
+    ctx.body = { code: 400, msg: '缺少必需参数noticeId' }
+  } else {
+    const muid = body.noticeId.split('_')[0];
+    const res = await redisClient(3).LRange(muid);
+    const notices = res.map(item => JSON.parse(item));
+    const item = notices.find(item => item.id === body.noticeId);
+    await redisClient(3).LRem(muid, 1, JSON.stringify(item)); // 从redis中删除该通知
+    if (item.type === 'addFriend') {
+      // 追加好友记录,但需要先查询好友关系是否已经存在
+      await queryDB(`select user_muid,friend_muid from meetu_users_relation where 
+              (user_muid=(select muid from meetu_users_muid where user_id='${uid}') and friend_muid="${item.to}")
+              or (friend_muid=(select muid from meetu_users_muid where user_id='${uid}') and user_muid="${item.to}");`)
+            .then(async result => {
+              if (result.length) {
+                ctx.body = { code: 404, msg: '好友关系已经存在' }
+              } else {
+                await queryDB(`INSERT INTO meetu_users_relation (user_muid, friend_muid) VALUES ('${item.from}', '${item.to}');`)
+                .then(() => {
+                  ctx.body = { code: 200, msg: '好友添加成功' }
+                }).catch(err => {
+                  console.log('agreeFriendRequest error: ', err);
+                  if (err.errno === 1062) { // mysql 1062错误代码表示插入重复主键记录
+                    ctx.body = { code: 404, msg: '好友关系已经存在' }
+                  } else {
+                    ctx.body = { code: 500, msg: '好友添加失败' }
+                  }
+                })
+              }
+            }).catch(err => {
+              console.log('agreeFriendRequest error: ', err);
+              ctx.body = { code: 500, msg: '查询好友关系失败' }
+            });
+    } else {
+      ctx.body = { code: 400, msg: '通知类型不正确' }
+    }
+  }
+}
+
+// 拒绝好友请求
+const disagreeFriendRequest = async ctx => {
+  const uid = ctx.uid;
+  const body = ctx.request.body;
+  if (!body || !body.noticeId) {
+    ctx.body = { code: 400, msg: '缺少必需参数noticeId' }
+  } else {
+    const muid = body.noticeId.split('_')[0];
+    const res = await redisClient(3).LRange(muid);
+    const notices = res.map(item => JSON.parse(item));
+    const item = notices.find(item => item.id === body.noticeId);
+    await redisClient(3).LRem(muid, 1, JSON.stringify(item)); // 从redis中删除该通知
+    const time = +new Date();
+    // 向申请加好友的用户返回拒绝好友申请的通知
+    const res2 = await redisClient(3).RPush(item.from, JSON.stringify({
+      id: `${item.from}_${time}`,
+      type: 'disagreeFriend',
+      from: item.to,
+      to: item.from,
+      message: Buffer.from('对方拒绝了你的好友申请').toString("base64"),
+      time: time
+    }));
+    if (res2 > 0) ctx.body = { code: 200, msg: '返回拒绝好友通知成功' }
+    else ctx.body = { code: 500, msg: '返回拒绝好友通知失败' }
   }
 }
 
@@ -64,6 +135,8 @@ const getAllNotices = async ctx => {
 
 module.exports = {
   addFriendRequest,
+  agreeFriendRequest,
+  disagreeFriendRequest,
   getAllNoticesNumber,
   getAllNotices
 }

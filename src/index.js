@@ -20,7 +20,14 @@ userRouter.prefix('/api')
 const app = new Koa()
 
 // 注册中间件
-app.use(cors({ origin: "*" }))
+app.use(cors({ origin: ctx => { // 设置多个跨域域名
+  const allowCross = origin;
+  const url = ctx.header.referer.substring(0, ctx.header.referer.length - 1);
+  if (allowCross.includes(url)) {
+    return url
+  }
+  return 'http://127.0.0.1:8000'
+} }))
 app.use(userMiddleware)
 app.use(koaBody({
   multipart:true,
