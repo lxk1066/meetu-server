@@ -81,6 +81,9 @@ userRouter.post('/getAllNoticesNumber', notice.getAllNoticesNumber)
 // 获取当前用户的所有通知
 userRouter.post('/getAllNotices', notice.getAllNotices)
 
+// 删除指定通知
+userRouter.post('/deleteNotice', notice.deleteNotice)
+
 // 同意好友申请
 userRouter.post('/agreeFriendRequest', notice.agreeFriendRequest)
 

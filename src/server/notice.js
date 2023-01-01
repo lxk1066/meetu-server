@@ -1,5 +1,6 @@
 const redisClient = require('../utils/redis/redis');
 const queryDB = require('../model/db');
+const { delNotice } = require('../utils/deleteNotice')
 
 // 发送好友申请
 const addFriendRequest = async ctx => {
@@ -35,11 +36,7 @@ const agreeFriendRequest = async ctx => {
   if (!body || !body.noticeId) {
     ctx.body = { code: 400, msg: '缺少必需参数noticeId' }
   } else {
-    const muid = body.noticeId.split('_')[0];
-    const res = await redisClient(3).LRange(muid);
-    const notices = res.map(item => JSON.parse(item));
-    const item = notices.find(item => item.id === body.noticeId);
-    await redisClient(3).LRem(muid, 1, JSON.stringify(item)); // 从redis中删除该通知
+    const { item } = await delNotice(body.noticeId)
     if (item.type === 'addFriend') {
       // 追加好友记录,但需要先查询好友关系是否已经存在
       await queryDB(`select user_muid,friend_muid from meetu_users_relation where 
@@ -78,11 +75,7 @@ const disagreeFriendRequest = async ctx => {
   if (!body || !body.noticeId) {
     ctx.body = { code: 400, msg: '缺少必需参数noticeId' }
   } else {
-    const muid = body.noticeId.split('_')[0];
-    const res = await redisClient(3).LRange(muid);
-    const notices = res.map(item => JSON.parse(item));
-    const item = notices.find(item => item.id === body.noticeId);
-    await redisClient(3).LRem(muid, 1, JSON.stringify(item)); // 从redis中删除该通知
+    const { item } = await delNotice(body.noticeId)
     const time = +new Date();
     // 向申请加好友的用户返回拒绝好友申请的通知
     const res2 = await redisClient(3).RPush(item.from, JSON.stringify({
@@ -133,10 +126,27 @@ const getAllNotices = async ctx => {
   })
 }
 
+// 删除指定通知
+const deleteNotice = async ctx => {
+  const uid = ctx.uid;
+  const body = ctx.request.body;
+  if (!body || !body.noticeId) {
+    ctx.body = { code: 400, msg: '缺少必需参数noticeId' }
+  } else {
+    const { result } = await delNotice(body.noticeId);
+    if (result > 0) {
+      ctx.body = { code: 200, msg: '删除成功' }
+    } else {
+      ctx.body = { code: 400, msg: '删除失败' }
+    }
+  }
+}
+
 module.exports = {
   addFriendRequest,
   agreeFriendRequest,
   disagreeFriendRequest,
   getAllNoticesNumber,
-  getAllNotices
+  getAllNotices,
+  deleteNotice
 }
