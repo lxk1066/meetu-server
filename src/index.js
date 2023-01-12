@@ -4,8 +4,6 @@ const { createServer } = require("http")
 const { Server } = require("socket.io")
 const { koaBody } = require('koa-body')
 const cors = require('koa2-cors')
-require('path');
-const { onFileBegin } = require('./utils/onFileBegin')
 const redisClient = require("./utils/redis/redis")
 const { origin } = require('../project.config')
 
@@ -15,29 +13,28 @@ const userMiddleware = require('./middleware/user.middleware')
 // 引入路由
 const userRouter = require('./router/userRouter')
 userRouter.prefix('/api')
+const squareRouter = require('./router/squareRouter')
+squareRouter.prefix('/api')
 
 // 创建app实例对象
 const app = new Koa()
 
 // 注册中间件
-app.use(cors({ origin: ctx => { // 设置多个跨域域名
-  const allowCross = origin;
-  const url = ctx.header.referer.substring(0, ctx.header.referer.length - 1);
-  if (allowCross.includes(url)) {
-    return url
-  }
-  return 'http://127.0.0.1:8000'
-} }))
-app.use(userMiddleware)
-app.use(koaBody({
-  multipart:true,
-  formidable:{
-    maxFieldsSize:10*1024*1024,
-    keepExtensions: true,
-    onFileBegin: onFileBegin
+app.use(cors({
+  origin: ctx => { // 设置多个跨域域名
+    const allowCross = origin;
+    // header.referer 代表当前请求的来源地址，如果referer为空，代表是通过浏览器直接访问的或者是通过api测试工具直接调用
+    // 默认不允许空referer访问
+    ctx.header.referer = ctx.header.referer ? ctx.header.referer : ''
+    const url = ctx.header.referer.substring(0, ctx.header.referer.length - 1);
+    if (allowCross.includes(url)) return url
+    // return 'http://127.0.0.1:8000'
   }
 }))
+app.use(userMiddleware)
+app.use(koaBody({ multipart: true, formidable: { keepExtensions: true } }))
 app.use(userRouter.routes(), userRouter.allowedMethods())
+app.use(squareRouter.routes(), squareRouter.allowedMethods())
 
 // 错误处理
 app.on("error", (err, ctx) => {
@@ -75,7 +72,7 @@ io.on("connection", (socket) => {
       await redisClient(1).getString(anotherUserId).then(anotherSocketId => {
         if (anotherSocketId) socket.emit(`online-message-reply-${socket.uid}`, true)
         else socket.emit(`online-message-reply-${socket.uid}`, false)
-      }).catch(err => {
+      }).catch(() => {
         socket.emit(`online-message-reply-${socket.uid}`, false)
       })
     }

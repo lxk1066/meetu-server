@@ -1,4 +1,4 @@
-// socket.io CORS origin host
+// socket.io、CORS origin host
 const origin = [
   "xxxxxxxx"
 ]
@@ -33,4 +33,10 @@ const jwtSecret = "xxxxxxxx"
 // 前端的URL
 const siteUrl = "xxxxxxxx"
 
-module.exports = { origin, DB, redis, EmailAccount, jwtSecret, siteUrl }
+// 广场发布帖子时图片的上限
+const MaxPictures = 6;
+
+// 上传的单个文件大小上限, 单位比特(bit)
+const MaxFileSize = 5 * 1024 * 1024;
+
+module.exports = { origin, DB, redis, EmailAccount, jwtSecret, siteUrl, MaxPictures, MaxFileSize }

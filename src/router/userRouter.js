@@ -16,7 +16,7 @@ userRouter.get('/verifyToken', user.verifyToken)
 userRouter.post('/email', user.email)
 
 // 上传头像
-userRouter.post('/upload', user.upload)
+userRouter.post('/uploadProfile', user.uploadProfile)
 
 // 获取个人信息
 userRouter.get('/getPersonInfo/:uid', user.getPersonInfo)

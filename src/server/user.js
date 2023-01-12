@@ -10,6 +10,7 @@ const redisClient = require('../utils/redis/redis')
 const fs = require('fs')
 const path = require('path')
 const mime = require('mime-types')
+const streamWriter = require("../utils/streamWriter");
 
 // 用户登录
 const login = async (ctx) => {
@@ -152,38 +153,38 @@ const email = async (ctx) => {
 }
 
 // 上传头像
-const upload = async (ctx) => {
+const uploadProfile = async (ctx) => {
   const uid = ctx.uid;
   const files = ctx.request.files;
-  const key = Object.keys(files)[0];
 
-  if (files[key].length) {
-    files[key].forEach((item, index) => {
-      if (index !== 0) { fs.unlink(item.filepath, () => {}) }
-    })
+  if (!Reflect.get(files, 'profile')) {
+    return ctx.body = { code: 400, msg: '请上传图片' }
   }
 
-  let newProfile;
-  try {
-    files[key][0].length
-    newProfile = files[key][0].newFilename
-  } catch(e) {
-    newProfile = files[key].newFilename
-  }
+  const profile = (files.profile instanceof Array) ? files.profile[0] : files.profile;
+  const splits = profile.originalFilename.split('.');
+  splits.splice(1, 0, `${+new Date()}`);
+  const filename = `${uid}_${splits.join('.').replace(/[.]/, '_')}`;
+  const result = await streamWriter(profile.filepath, path.join(__dirname, '../../media/profile', filename))
 
-  try {
-    // 如果用户之前上传过图片，需要将旧的删掉
-    const res = await queryDB(`select profile from meetu_users where uid="${uid}"`)
+  if (result.status === 'Done') {
+    try {
+      // 如果用户之前上传过图片，需要将旧的删掉
+      const res = await queryDB(`select profile from meetu_users where uid="${uid}"`)
 
-    await queryDB(`UPDATE meetu_users SET profile="${newProfile}" WHERE uid=${parseInt(uid)}`)
+      await queryDB(`UPDATE meetu_users SET profile="${filename}" WHERE uid=${parseInt(uid)}`)
 
-    if (res[0].profile !== 'default.png') {
-      fs.unlink(path.join(__dirname, '../../media/profile/', res[0].profile), () => {})
+      if (res[0].profile !== 'default.png') {
+        fs.unlink(path.join(__dirname, '../../media/profile/', res[0].profile), () => {})
+      }
+
+      ctx.body = { code: 200, msg: '上传成功' }
+    } catch (e) {
+      fs.unlink(path.join(__dirname, '../../media/profile', filename), () => {});
+      ctx.body = { code: 500, msg: '上传失败' }
     }
-
-    ctx.body = { code: 200, msg: '上传成功' }
-  } catch (e) {
-    ctx.body = { code: 500, msg: '上传失败' }
+  } else {
+    ctx.body = { code: 500, msg: '图片保存失败, ' + result.error }
   }
 }
 
@@ -589,7 +590,7 @@ module.exports = {
   register,
   verifyToken,
   email,
-  upload,
+  uploadProfile,
   getPersonInfo,
   getMailbox,
   getProfile,
