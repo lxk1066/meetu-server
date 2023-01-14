@@ -4,6 +4,7 @@ const streamWriter = require('../utils/streamWriter');
 const path = require('path');
 const fs = require('fs');
 const { MaxPictures } = require('../../project.config')
+const mime = require("mime-types");
 
 const publishPost = async ctx => {
   const uid = ctx.uid;
@@ -82,6 +83,79 @@ const publishPost = async ctx => {
   }
 }
 
+const getPostList = async ctx => {
+  /**
+   * /api/square/getPostList?order=time&offset=跳过多少条记录&limit=取多少条记录
+   * order 代表排序方式，可选值：time | hot
+   * offset 代表跳过前面的多少条记录
+   * limit 代表从offset后一位开始取多少条记录
+   */
+  let { order='time', offset='0', limit='10' } = ctx.request.query;
+  offset = parseInt(offset); limit = parseInt(limit);
+  if (!['time', 'hot'].includes(order)) {
+    return ctx.body = { code: 400, msg: 'order查询参数错误' }
+  } else if (!Number.isInteger(offset) || !Number.isInteger(limit)) {
+    return ctx.body = { code: 400, msg: 'offset或limit查询参数错误' }
+  } else {
+    const sql1 = `select * from meetu_square_articles order by updated_time desc limit ${offset}, ${limit};`;
+    const sql2 = `select * from meetu_square_articles where updated_time <= (select updated_time from meetu_square_articles order by updated_time desc limit ${offset}, 1) order by updated_time desc limit ${limit};`;
+    await queryDB(offset <= 10 ? sql1 : sql2).then(async result => {
+      for (const item of result) {
+        const index = result.indexOf(item);
+        const res = await queryDB(`select pic_id,pic_name,updated_time as pic_updated_time from meetu_square_pictures where art_id=${item.art_id}`)
+        result[index].pictures = [...res]
+      }
+      return ctx.body = { code: 200, msg: '查询成功', data: { result } };
+    }).catch(err => {
+      console.log('getPostList error: ', err);
+    });
+  }
+}
+
+// 获取指定名称的图片
+const getPicture = async ctx => {
+  const picName = Reflect.get(ctx.params, 'picName');
+  let picPath = path.join(__dirname, '../../media/squarePictures/', picName);
+  let picData = null;
+  if (!picName) {
+    ctx.body = { code: 400, msg: '缺少必需的图片名称' }
+  } else {
+    try {
+      picData = fs.readFileSync(picPath); //读取文件
+    } catch (error) {
+      //如果服务器不存在请求的图片，返回默认图片
+      picPath = path.join(__dirname, '../../media/squarePictures/default.png'); //默认图片地址
+      picData = fs.readFileSync(picPath); //读取文件
+    } finally {
+      const mimeType = mime.lookup(picPath); // 文件类型
+      ctx.set('Content-Type', mimeType);
+      ctx.body = picData; //返回图片
+    }
+  }
+}
+
+const getPost = async ctx => {
+  const artId = ctx.params.artId;
+  let resultObj = {};
+  await queryDB(`select * from meetu_square_articles where art_id=${artId}`)
+    .then(async result => {
+      if (result.length > 0) {
+        const res = await queryDB(`select pic_id,pic_name,updated_time as pic_updated_time from meetu_square_pictures where art_id=${result[0].art_id}`);
+        result[0].pictures = [...res]
+        resultObj = { code: 200, msg: '获取帖子数据成功', data: { result: result[0] } };
+      } else {
+        resultObj = { code: 400, msg: '该帖子未找到' }
+      }
+    }).catch(err => {
+      console.log('getPost error: ', err);
+      resultObj = { code: 500, msg: '获取文章数据失败' }
+    });
+  ctx.body = resultObj
+}
+
 module.exports = {
-  publishPost
+  publishPost,
+  getPostList,
+  getPicture,
+  getPost
 }
