@@ -100,6 +100,29 @@ function redisClient (db) {
     return res
   }
 
+  async function Rename(oldKey, newKey) {
+    await redisClient.connect(); // 连接
+    // 如果旧key存在，就重命名
+    if (await redisClient.sendCommand(['exists', oldKey])) {
+      const res = await redisClient.sendCommand(['RENAME', oldKey, newKey]);
+
+      await redisClient.quit() // 关闭连接
+      return res;
+    } else {
+      await redisClient.quit() // 关闭连接
+      return false;
+    }
+  }
+
+  async function Lset(key, index, value) {
+    await redisClient.connect(); // 连接
+
+    const res = await redisClient.sendCommand(['LSET', key.toString(), index.toString(), value.toString()]);
+
+    await redisClient.quit() // 关闭连接
+    return res
+  }
+
   return {
     getString,
     setString,
@@ -109,7 +132,9 @@ function redisClient (db) {
     LPop,
     LRem,
     LRange,
-    LLen
+    LLen,
+    Rename,
+    Lset
   }
 }
 
