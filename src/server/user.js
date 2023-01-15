@@ -11,6 +11,7 @@ const fs = require('fs')
 const path = require('path')
 const mime = require('mime-types')
 const streamWriter = require("../utils/streamWriter");
+const renameMuidAction = require("../utils/renameMuid")
 
 // 用户登录
 const login = async (ctx) => {
@@ -468,11 +469,16 @@ const updateMUID = async ctx => {
         else ctx.body = { code: 500, msg: 'MUID已被占用' }
       } else {
         // 允许修改MUID
-        await queryDB(`select updated_time from meetu_users_muid where user_id="${uid}"`).then(async result => {
+        await queryDB(`select muid,updated_time from meetu_users_muid where user_id="${uid}"`).then(async result => {
+          const oldMUID = result[0].muid;
           if (result.length > 0) {
             // 距离上次修改时间间隔大于365天，允许修改
             if ((+new Date() - parseInt(result[0].updated_time)) > 86400000 * 365) {
-              await queryDB(`UPDATE meetu_users_muid SET muid="${body.newMUID}",updated_time="${+new Date()}" WHERE user_id="${uid}"`).then(() => {
+              await queryDB(`UPDATE meetu_users_muid SET muid="${body.newMUID}",updated_time="${+new Date()}" WHERE user_id="${uid}"`).then(async () => {
+                // 用户修改MUID，通知列表的key也要跟着换
+                await renameMuidAction(oldMUID, body.newMUID).catch(err => {
+                  console.log('updateMUID renameMuidAction error: ', err)
+                });
                 ctx.body = { code: 200, msg: '修改成功' }
               }).catch(err => {
                 console.log("updateMUID error:", err);
@@ -487,7 +493,7 @@ const updateMUID = async ctx => {
             }).catch(err => {
               console.log("updateMUID error:", err);
               ctx.body = { code: 500, msg: '修改失败' }
-            })
+            });
           }
         })
       }

@@ -17,7 +17,7 @@ const addFriendRequest = async ctx => {
         const base64Str = Buffer.from(body.message).toString("base64"); // 将中文转换成base64
         const time = +new Date();
         const res = await redisClient(3).RPush(to_muid, JSON.stringify({
-          id: `${to_muid}_${time}`, type: 'addFriend', from: from_muid, to: to_muid, message: base64Str, time: time
+          id: `${to_muid}-${time}`, type: 'addFriend', from: from_muid, to: to_muid, message: base64Str, time: time
         }))
         if (res > 0) ctx.body = { code: 200, msg: '发送成功' }
         else ctx.body = { code: 400, msg: '发送失败' }
@@ -79,7 +79,7 @@ const disagreeFriendRequest = async ctx => {
     const time = +new Date();
     // 向申请加好友的用户返回拒绝好友申请的通知
     const res2 = await redisClient(3).RPush(item.from, JSON.stringify({
-      id: `${item.from}_${time}`,
+      id: `${item.from}-${time}`,
       type: 'disagreeFriend',
       from: item.to,
       to: item.from,
