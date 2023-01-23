@@ -33,10 +33,23 @@ const jwtSecret = "xxxxxxxx"
 // 前端的URL
 const siteUrl = "xxxxxxxx"
 
+// 登录成功后生成的json web token有效期时长
+const LoginJwtExpiresIn = '7days';
+
 // 广场发布帖子时图片的上限
 const MaxPictures = 6;
 
 // 上传的单个文件大小上限, 单位比特(bit)
 const MaxFileSize = 5 * 1024 * 1024;
 
-module.exports = { origin, DB, redis, EmailAccount, jwtSecret, siteUrl, MaxPictures, MaxFileSize }
+module.exports = {
+  origin,
+  DB,
+  redis,
+  EmailAccount,
+  LoginJwtExpiresIn,
+  jwtSecret,
+  siteUrl,
+  MaxPictures,
+  MaxFileSize
+}

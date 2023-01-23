@@ -1,6 +1,6 @@
 const queryDB = require('../model/db')
 const jwt = require('../utils/jwt') // 生成jwt
-const { jwtSecret, siteUrl } = require('../../project.config')
+const { LoginJwtExpiresIn, jwtSecret, siteUrl } = require('../../project.config')
 const { encryptPassword } = require('../utils/encryptPassword') // 将明文密码用sha256加密
 const { verifyJwt } = require('../utils/verifyJWT') // 验证jwt_token是否合法
 const sendMail = require('../utils/email.js') // 发送邮件
@@ -34,7 +34,7 @@ const login = async (ctx) => {
     // 2.如果验证成功，生成token
     const token = await jwt.sign({
       uid: res[0].uid
-    }, jwtSecret, { expiresIn: '24h' })
+    }, jwtSecret, { expiresIn: LoginJwtExpiresIn })
     // 将token挂载到http的authorization
     // ctx.set('Authorization', token);
     ctx.body = {
