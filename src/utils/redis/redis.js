@@ -10,7 +10,7 @@ const { redis } = require("../../../project.config");
  */
 
 function redisClient(db) {
-  const url = `redis://${redis.host}:${redis.port}/${db}`;
+  const url = `redis://:${redis.pass}@${redis.host}:${redis.port}/${db}`;
   const redisClient = createClient({
     url: url
   });

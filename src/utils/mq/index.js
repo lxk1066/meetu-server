@@ -1,6 +1,7 @@
 const { Queue } = require("bullmq");
 const { MQConnection, MQDefaultJobOptions } = require("../../../project.config.js");
 const connection = {
+  password: MQConnection.pass,
   host: MQConnection.host,
   port: MQConnection.port,
   db: MQConnection.db
