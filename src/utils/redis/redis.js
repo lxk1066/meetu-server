@@ -1,5 +1,5 @@
-const { createClient } = require('redis');
-const { redis } = require('../../../project.config')
+const { createClient } = require("redis");
+const { redis } = require("../../../project.config");
 
 /**
  * redis://[[username][:password]@][host][:port][/db-number]
@@ -9,107 +9,109 @@ const { redis } = require('../../../project.config')
  * 或者不写db_number redis://:127.0.0.1:6379
  */
 
-function redisClient (db) {
-  const url = `redis://:${redis.pass}@${redis.host}:${redis.port}/${db}`
+function redisClient(db) {
+  const url = `redis://${redis.host}:${redis.port}/${db}`;
   const redisClient = createClient({
     url: url
   });
 
-  redisClient.on('ready', () => console.log(`connect to redis://:xxxxxxxx@${redis.host}:${redis.port}/${db}, redis is ready...`)
-  )
-  redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  redisClient.on("ready", () =>
+    console.log(`connect to redis://:xxxxxxxx@${redis.host}:${redis.port}/${db}, redis is ready...`)
+  );
+  redisClient.on("error", err => console.log("Redis Client Error", err));
 
-  async function setString (key, value, expire) {
+  async function setString(key, value, expire) {
     await redisClient.connect(); // 连接
 
     const res = await redisClient.set(key, value, { EX: expire, NX: true }); // 设置值
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
-  async function getString (key) {
+  async function getString(key) {
     await redisClient.connect(); // 连接
 
     const res = await redisClient.get(key); // 得到value 没有则为null
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
-  async function delString (key) {
+  async function delString(key) {
     await redisClient.connect(); // 连接
 
     const res = await redisClient.del(key); // 0 没有key关键字 1删除成功
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
-  async function exists (key) {
+  async function exists(key) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['exists', key]); // 如果key存在返回 1，否则返回 0
+    const res = await redisClient.sendCommand(["exists", key]); // 如果key存在返回 1，否则返回 0
 
-    await redisClient.quit() // 关闭连接
-    return res
+    const a = await redisClient.quit(); // 关闭连接
+
+    return res;
   }
 
   async function RPush(key, value) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['RPUSH', key, value]);
+    const res = await redisClient.sendCommand(["RPUSH", key, value]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   async function LPop(key) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['LPOP', key]);
+    const res = await redisClient.sendCommand(["LPOP", key]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   async function LRem(key, count, value) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['LREM', key, count.toString(), value]);
+    const res = await redisClient.sendCommand(["LREM", key, count.toString(), value]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   async function LRange(key) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['LRANGE', key, '0', '-1']);
+    const res = await redisClient.sendCommand(["LRANGE", key, "0", "-1"]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   async function LLen(key) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['LLEN', key]);
+    const res = await redisClient.sendCommand(["LLEN", key]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   async function Rename(oldKey, newKey) {
     await redisClient.connect(); // 连接
     // 如果旧key存在，就重命名
-    if (await redisClient.sendCommand(['exists', oldKey])) {
-      const res = await redisClient.sendCommand(['RENAME', oldKey, newKey]);
+    if (await redisClient.sendCommand(["exists", oldKey])) {
+      const res = await redisClient.sendCommand(["RENAME", oldKey, newKey]);
 
-      await redisClient.quit() // 关闭连接
+      await redisClient.quit(); // 关闭连接
       return res;
     } else {
-      await redisClient.quit() // 关闭连接
+      await redisClient.quit(); // 关闭连接
       return false;
     }
   }
@@ -117,10 +119,10 @@ function redisClient (db) {
   async function Lset(key, index, value) {
     await redisClient.connect(); // 连接
 
-    const res = await redisClient.sendCommand(['LSET', key.toString(), index.toString(), value.toString()]);
+    const res = await redisClient.sendCommand(["LSET", key.toString(), index.toString(), value.toString()]);
 
-    await redisClient.quit() // 关闭连接
-    return res
+    await redisClient.quit(); // 关闭连接
+    return res;
   }
 
   return {
@@ -135,7 +137,7 @@ function redisClient (db) {
     LLen,
     Rename,
     Lset
-  }
+  };
 }
 
-module.exports = redisClient
+module.exports = redisClient;
