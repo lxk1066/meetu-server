@@ -207,7 +207,7 @@ const uploadProfile = async ctx => {
 const getPersonInfo = async ctx => {
   const uid = ctx.params.uid;
   const res = await queryDB(`select
-                      users.username,users.profile,users.gender,users.sign,users.area,users_muid.muid
+                      users.username,users.profile,users.gender,users.sign,users.area,users.created_time,users_muid.muid
                       from meetu_users as users left join meetu_users_muid as users_muid on users_muid.user_id=${uid}
                       where users.uid=${uid};`);
   // console.log(res);
@@ -220,7 +220,8 @@ const getPersonInfo = async ctx => {
       gender: res[0].gender,
       sign: res[0].sign,
       area: res[0].area,
-      muid: res[0].muid
+      muid: res[0].muid,
+      created_time: res[0].created_time
     }
   };
 };
