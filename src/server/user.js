@@ -212,18 +212,22 @@ const getPersonInfo = async ctx => {
                       where users.uid=${uid};`);
   // console.log(res);
 
-  ctx.body = {
-    code: 200,
-    data: {
-      profile: res[0].profile,
-      username: res[0].username,
-      gender: res[0].gender,
-      sign: res[0].sign,
-      area: res[0].area,
-      muid: res[0].muid,
-      created_time: res[0].created_time
-    }
-  };
+  const data = res?.[0];
+  if (!data) ctx.body = { code: 404, msg: "用户不存在" };
+  else {
+    ctx.body = {
+      code: 200,
+      data: {
+        username: data.username,
+        profile: data.profile,
+        gender: data.gender,
+        sign: data.sign,
+        area: data.area,
+        muid: data.muid,
+        created_time: data.created_time
+      }
+    };
+  }
 };
 
 // 获取用户的邮箱地址
