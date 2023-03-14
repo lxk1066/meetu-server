@@ -1,5 +1,5 @@
 // socket.io、CORS origin host
-const origin = ["xxxxxxxx"];
+const originHosts = ["xxxxxxxx"];
 
 // 数据库的配置信息
 const DB = {
@@ -64,7 +64,7 @@ const MaxPictures = 6;
 const MaxFileSize = 5 * 1024 * 1024;
 
 module.exports = {
-  origin,
+  originHosts,
   DB,
   redis,
   MQConnection,
