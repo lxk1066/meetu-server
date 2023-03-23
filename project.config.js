@@ -62,7 +62,6 @@ module.exports = {
   redis,
   MQConnection,
   MQDefaultJobOptions,
-  EmailAccount,
   LoginJwtExpiresIn,
   jwtSecret,
   siteUrl,
