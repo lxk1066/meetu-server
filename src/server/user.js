@@ -19,6 +19,7 @@ class User {
     // 1.拿到请求体中的用户名和密码并验证
     const user = ctx.request.body;
 
+    let res;
     if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.username)) {
       res = await queryDB(`select uid,username,password from meetu_users where email="${user.username}"`);
     } else {

@@ -41,13 +41,6 @@ const MQDefaultJobOptions = {
   }
 };
 
-// 邮箱的配置信息
-const EmailAccount = {
-  service: "QQ",
-  user: "xxxxxxxx", //  发件人邮箱
-  pass: "xxxxxxxx" //  授权码
-};
-
 // jwt secret
 const jwtSecret = "xxxxxxxx";
 
