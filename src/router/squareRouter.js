@@ -12,6 +12,10 @@ squareRouter
   // 获取帖子详情
   .get("/getPost/:artId", square.getPost)
   // 获取用户的帖子列表
-  .get("/getUserPostList/:uid", square.getUserPostList);
+  .get("/getUserPostList/:uid", square.getUserPostList)
+  // 点赞某篇帖子
+  .post("/starPost", square.starPost)
+  // 查询用户是否点赞某篇帖子
+  .get("/postStarStatus", square.getStarStatus);
 
 module.exports = squareRouter;

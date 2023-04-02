@@ -193,6 +193,61 @@ class Square {
     const res = await queryDB(sql);
     ctx.body = { code: 200, data: res };
   }
+
+  // 点赞某篇帖子
+  async starPost(ctx) {
+    const uid = ctx.uid;
+    const { postId } = ctx.request.body;
+
+    if (!postId) return (ctx.body = { code: 400, msg: "缺少必需参数postId" });
+
+    // 判断用户是否点赞，如果已点赞则取消点赞，否则就点赞
+    const sql1 = `SELECT art_id from meetu_square_stars where user_id=${uid} and art_id=${postId}`;
+    const res = await queryDB(sql1).catch(err => {
+      console.log("starPost Error: " + err);
+    });
+
+    if (res.length > 0) {
+      // 取消点赞
+      const sql2 = `DELETE from meetu_square_stars WHERE user_id=${uid} and art_id=${postId}`;
+      const sql3 = `UPDATE meetu_square_articles SET star=star-1 WHERE art_id=${postId}`;
+      const res = await transaction([sql2, sql3]).catch(err => {
+        console.log("starPost -> 取消点赞:", err);
+      });
+    } else {
+      // 点赞
+      const sql4 = `UPDATE meetu_square_articles SET star=star+1 WHERE art_id=${postId}`;
+      const sql5 = `INSERT INTO meetu_square_stars(art_id, user_id) VALUES(${postId}, ${uid})`;
+      const res = await transaction([sql4, sql5]).catch(err => {
+        console.log("starPost -> 点赞:", err);
+      });
+    }
+
+    return (ctx.body = { code: 200, msg: "ok" });
+  }
+
+  // 查询用户是否点赞某篇帖子
+  async getStarStatus(ctx) {
+    // const uid = ctx.uid;
+    const { userId: uid, postId } = ctx.request.query;
+
+    if (!postId || !uid) return (ctx.body = { code: 400, msg: "缺少查询参数postId或uid" });
+    else if (Number.isInteger(postId) || Number.isInteger(uid))
+      return (ctx.body = { code: 400, msg: "请传入正确的postId或uid" });
+
+    // 判断用户是否点赞
+    const sql1 = `SELECT art_id from meetu_square_stars where user_id=${Number(uid)} and art_id=${Number(postId)}`;
+    const res = await queryDB(sql1).catch(err => {
+      console.log("getStarStatus Error: " + err);
+      return (ctx.body = { code: 500, msg: "" });
+    });
+
+    if (res.length > 0) {
+      return (ctx.body = { code: 200, msg: "已点赞" });
+    } else {
+      return (ctx.body = { code: 404, msg: "未点赞" });
+    }
+  }
 }
 
 module.exports = new Square();
