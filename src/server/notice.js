@@ -164,6 +164,47 @@ class Notice {
       }
     }
   }
+
+  // 发送点赞帖子的通知
+  async starPost(ctx) {
+    const uid = ctx.uid;
+    const { postId } = ctx.request.body;
+    if (!postId) return { code: 400, msg: "缺少必需参数postId" };
+
+    // 取得帖子所属的用户ID
+    const sql1 = `select muid from meetu_square_articles where art_id=${postId}`;
+    const sql2 = `select muid from meetu_users_muid where user_id=${uid}`;
+
+    const [res1, res2] = await Promise.all([queryDB(sql1), queryDB(sql2)]).catch(err => {});
+    if (res1.length > 0) {
+      const from_muid = res2[0].muid;
+      const to_muid = res1[0].muid;
+      const message = Buffer.from(`点赞了你的帖子`).toString("base64");
+      const time = +new Date();
+
+      // 自己点赞自己 不需要发通知
+      if (from_muid === to_muid) return { code: 200, msg: "ok" };
+
+      // 向redis中push通知
+      const res = await redisClient(3).RPush(
+        to_muid,
+        JSON.stringify({
+          id: `${to_muid}-${time}`,
+          type: "starPost",
+          data: { postId: postId },
+          from: from_muid,
+          to: to_muid,
+          message: message,
+          time: time
+        })
+      );
+
+      if (res > 0) return { code: 200, msg: "通知发送成功" };
+      else return { code: 404, msg: "通知发送失败" };
+    } else {
+      return { code: 400, msg: "文章不存在" };
+    }
+  }
 }
 
 module.exports = new Notice();

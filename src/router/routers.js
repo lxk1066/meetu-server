@@ -7,8 +7,10 @@ const router = new Router({ prefix: "/api" });
 
 const userRouter = require("./userRouter");
 const squareRouter = require("./squareRouter");
+const noticeRouter = require("./noticeRouter");
 
 router.use(userRouter.routes());
 router.use(squareRouter.routes());
+router.use(noticeRouter.routes());
 
 module.exports = router;

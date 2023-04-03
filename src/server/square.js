@@ -5,6 +5,7 @@ const path = require("path");
 const fs = require("fs");
 const { MaxPictures } = require("../../project.config");
 const mime = require("mime-types");
+const { starPost: starPostNotice } = require("../server/notice");
 
 class Square {
   // 发布帖子
@@ -221,6 +222,12 @@ class Square {
       const res = await transaction([sql4, sql5]).catch(err => {
         console.log("starPost -> 点赞:", err);
       });
+
+      // 发送点赞帖子的通知
+      if (Array.isArray(res) && res.length > 0) {
+        const result = await starPostNotice(ctx);
+        if (result.code !== 200) return (ctx.body = result.msg);
+      }
     }
 
     return (ctx.body = { code: 200, msg: "ok" });
