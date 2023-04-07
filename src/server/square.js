@@ -255,6 +255,147 @@ class Square {
       return (ctx.body = { code: 404, msg: "未点赞" });
     }
   }
+
+  // 追加一条根评论
+  async commentPost(ctx) {
+    const uid = ctx.uid;
+    const { postId, content } = ctx.request.body;
+    if (!postId) return (ctx.body = { code: 400, msg: "评论ID不能为空" });
+    if (!content) return (ctx.body = { code: 400, msg: "评论内容不能为空" });
+
+    // 获取用户名
+    const sql1 = `select username from meetu_users where uid=${uid}`;
+    // 判断postId是否存在
+    const sql2 = `SELECT art_id FROM meetu_square_articles WHERE art_id = ${postId}`;
+
+    const resultArr = await Promise.all([queryDB(sql1), queryDB(sql2)]).catch(err => {
+      console.log("commentPost error: " + err);
+      return (ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    const username = resultArr[0][0].username;
+    const createdTime = Date.now();
+
+    if (!resultArr[1]?.[0] || resultArr[1][0].length == 0) return (ctx.body = { code: 400, msg: "帖子不存在" });
+
+    // 插入评论
+    const commentSql = `
+      INSERT INTO meetu_square_comments(content,art_id,user_id,username,created_time)
+       VALUES("${content}",${postId},${uid},"${username}","${createdTime}")
+    `;
+
+    const result = await queryDB(commentSql).catch(err => {
+      console.log("commentPost error: " + err);
+      return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+  }
+
+  // 回复根评论
+  async replyRootComment(ctx) {
+    const uid = ctx.uid;
+    const { postId, content, rootCommentId } = ctx.request.body;
+    if (!postId) return (ctx.body = { code: 400, msg: "评论ID不能为空" });
+    if (!content) return (ctx.body = { code: 400, msg: "评论内容不能为空" });
+    if (!rootCommentId) return (ctx.body = { code: 400, msg: "根评论ID不能为空" });
+
+    // 获取用户名
+    const sql1 = `select username from meetu_users where uid=${uid}`;
+    // 判断postId是否存在
+    const sql2 = `SELECT art_id FROM meetu_square_articles WHERE art_id = ${postId}`;
+    // 判断根评论ID是否存在
+    const sql3 = `SELECT id FROM meetu_square_comments WHERE id = ${rootCommentId}`;
+
+    const resultArr = await Promise.all([queryDB(sql1), queryDB(sql2), queryDB(sql3)]).catch(err => {
+      console.log("replyRootComment error: " + err);
+      return (ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    const username = resultArr[0][0].username;
+    const createdTime = Date.now();
+
+    if (!resultArr[1]?.[0] || resultArr[1][0].length == 0) return (ctx.body = { code: 400, msg: "帖子不存在" });
+    if (!resultArr[2]?.[0] || resultArr[2][0].length == 0) return (ctx.body = { code: 400, msg: "根评论不存在" });
+
+    // 插入评论
+    const commentSql = `
+      INSERT INTO meetu_square_comments(content,rootCommentId,art_id,user_id,username,created_time)
+       VALUES("${content}",${rootCommentId},${postId},${uid},"${username}","${createdTime}")
+    `;
+
+    const result = await queryDB(commentSql).catch(err => {
+      console.log("commentPost error: " + err);
+      return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+  }
+
+  // 回复子评论
+  async replySubComment(ctx) {
+    const uid = ctx.uid;
+    const { postId, content, rootCommentId, toCommentId } = ctx.request.body;
+    if (!postId) return (ctx.body = { code: 400, msg: "评论ID不能为空" });
+    if (!content) return (ctx.body = { code: 400, msg: "评论内容不能为空" });
+    if (!rootCommentId) return (ctx.body = { code: 400, msg: "根评论ID不能为空" });
+    if (!toCommentId) return (ctx.body = { code: 400, msg: "子评论ID不能为空" });
+
+    // 获取用户名
+    const sql1 = `select username from meetu_users where uid=${uid}`;
+    // 判断postId是否存在
+    const sql2 = `SELECT art_id FROM meetu_square_articles WHERE art_id = ${postId}`;
+    // 判断根评论ID或子评论ID是否存在
+    const sql3 = `SELECT COUNT(id) as count FROM meetu_square_comments WHERE id = ${rootCommentId} OR id = ${toCommentId}`;
+
+    const resultArr = await Promise.all([queryDB(sql1), queryDB(sql2), queryDB(sql3)]).catch(err => {
+      console.log("replyRootComment error: " + err);
+      return (ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    const username = resultArr[0][0].username;
+    const createdTime = Date.now();
+
+    if (!resultArr[1]?.[0] || resultArr[1][0].length == 0) return (ctx.body = { code: 400, msg: "帖子不存在" });
+    if (!resultArr[2]?.[0] || resultArr[2][0].count !== 2)
+      return (ctx.body = { code: 400, msg: "根评论或子评论不存在" });
+
+    // 插入评论
+    const commentSql = `
+      INSERT INTO meetu_square_comments(content,rootCommentId,toCommentId,art_id,user_id,username,created_time)
+       VALUES("${content}",${rootCommentId},${toCommentId},${postId},${uid},"${username}","${createdTime}")
+    `;
+
+    const result = await queryDB(commentSql).catch(err => {
+      console.log("commentPost error: " + err);
+      return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
+    });
+
+    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+  }
+
+  // 获取某篇帖子的几条评论（未登录）
+  async getPostComment(ctx) {
+    const { postId } = ctx.request.params;
+    if (!postId) return (ctx.body = { code: 400, msg: "帖子ID不能为空" });
+
+    const sql = `SELECT * FROM meetu_square_comments WHERE art_id=${postId} AND rootCommentId is NULL ORDER BY created_time DESC LIMIT 3`;
+    const result = await queryDB(sql).catch(err => {});
+
+    return (ctx.body = { code: 200, msg: "ok", data: { comments: result } });
+  }
+
+  // 获取某篇帖子的所有评论（已登录）
+  async getPostCommentList(ctx) {
+    // const uid = ctx.uid;
+    const { postId } = ctx.request.body;
+    if (!postId) return (ctx.body = { code: 400, msg: "帖子ID不能为空" });
+
+    const sql = `SELECT * FROM meetu_square_comments WHERE art_id=${postId} ORDER BY created_time DESC`;
+    const result = await queryDB(sql).catch(err => {});
+
+    return (ctx.body = { code: 200, msg: "ok", data: { comments: result } });
+  }
 }
 
 module.exports = new Square();

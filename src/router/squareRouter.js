@@ -16,6 +16,16 @@ squareRouter
   // 点赞某篇帖子
   .post("/starPost", square.starPost)
   // 查询用户是否点赞某篇帖子
-  .get("/postStarStatus", square.getStarStatus);
+  .get("/postStarStatus", square.getStarStatus)
+  // 追加一条根评论
+  .post("/commentPost", square.commentPost)
+  // 回复根评论
+  .post("/replyRootComment", square.replyRootComment)
+  // 回复子评论
+  .post("/replySubComment", square.replySubComment)
+  // 获取某篇帖子的几条评论（未登录）
+  .get("/getPostComment/:postId", square.getPostComment)
+  // 获取某篇帖子的所有评论（已登录）
+  .post("/getPostCommentList", square.getPostCommentList);
 
 module.exports = squareRouter;
