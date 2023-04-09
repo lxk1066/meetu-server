@@ -289,7 +289,20 @@ class Square {
       return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
     });
 
-    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+    ctx.body = {
+      code: 200,
+      msg: "ok",
+      data: {
+        id: result.insertId,
+        content: content,
+        rootCommentId: null,
+        toCommentId: null,
+        art_id: postId,
+        user_id: uid,
+        username: username,
+        created_time: createdTime
+      }
+    };
   }
 
   // 回复根评论
@@ -329,7 +342,20 @@ class Square {
       return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
     });
 
-    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+    ctx.body = {
+      code: 200,
+      msg: "ok",
+      data: {
+        id: result.insertId,
+        content: content,
+        rootCommentId: rootCommentId,
+        toCommentId: null,
+        art_id: postId,
+        user_id: uid,
+        username: username,
+        created_time: createdTime
+      }
+    };
   }
 
   // 回复子评论
@@ -371,7 +397,20 @@ class Square {
       return (ctx.body = ctx.body = { code: 500, msg: "服务端错误" });
     });
 
-    ctx.body = { code: 200, msg: "ok", data: { commentId: result.insertId } };
+    ctx.body = {
+      code: 200,
+      msg: "ok",
+      data: {
+        id: result.insertId,
+        content: content,
+        rootCommentId: rootCommentId,
+        toCommentId: toCommentId,
+        art_id: postId,
+        user_id: uid,
+        username: username,
+        created_time: createdTime
+      }
+    };
   }
 
   // 获取某篇帖子的几条评论（未登录）
