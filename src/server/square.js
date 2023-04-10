@@ -418,10 +418,14 @@ class Square {
     const { postId } = ctx.request.params;
     if (!postId) return (ctx.body = { code: 400, msg: "帖子ID不能为空" });
 
-    const sql = `SELECT * FROM meetu_square_comments WHERE art_id=${postId} AND rootCommentId is NULL ORDER BY created_time DESC LIMIT 3`;
-    const result = await queryDB(sql).catch(err => {});
+    const sql = `SELECT * FROM meetu_square_comments WHERE art_id=${postId} AND rootCommentId is NULL ORDER BY created_time LIMIT 3`;
+    const sql2 = `SELECT COUNT(*) as count FROM meetu_square_comments WHERE art_id=${postId}`;
+    const result = await Promise.all([queryDB(sql), queryDB(sql2)]).catch(err => {
+      console.log("getPostComment Error: " + err);
+      return (ctx.body = { code: 500, msg: "查询数据库失败" });
+    });
 
-    return (ctx.body = { code: 200, msg: "ok", data: { comments: result } });
+    return (ctx.body = { code: 200, msg: "ok", data: { comments: result[0], total: result[1][0].count } });
   }
 
   // 获取某篇帖子的所有评论（已登录）
@@ -431,9 +435,12 @@ class Square {
     if (!postId) return (ctx.body = { code: 400, msg: "帖子ID不能为空" });
 
     const sql = `SELECT * FROM meetu_square_comments WHERE art_id=${postId} ORDER BY created_time DESC`;
-    const result = await queryDB(sql).catch(err => {});
+    const result = await queryDB(sql).catch(err => {
+      console.log("getPostCommentList Error: " + err);
+      return (ctx.body = { code: 500, msg: "查询数据库失败" });
+    });
 
-    return (ctx.body = { code: 200, msg: "ok", data: { comments: result } });
+    return (ctx.body = { code: 200, msg: "ok", data: { comments: result, total: result.length } });
   }
 }
 
