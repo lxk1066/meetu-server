@@ -425,7 +425,7 @@ class Square {
       return (ctx.body = { code: 500, msg: "查询数据库失败" });
     });
 
-    return (ctx.body = { code: 200, msg: "ok", data: { comments: result[0], total: result[1][0].count } });
+    return (ctx.body = { code: 200, msg: "ok", data: { comments: result[0].reverse(), total: result[1][0].count } });
   }
 
   // 获取某篇帖子的所有评论（已登录）
