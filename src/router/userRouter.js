@@ -32,6 +32,8 @@ userRouter
   .post("/updateGender", user.updateGender)
   // 修改地区area
   .post("/updateArea", user.updateArea)
+  // 验证旧邮箱地址
+  .post("/verifyOldEmail", user.verifyOldEmail)
   // 修改邮箱地址
   .post("/modifyMailbox", user.modifyMailbox)
   // 发送`修改邮箱`的验证码邮件

@@ -41,6 +41,15 @@ const MQDefaultJobOptions = {
   }
 };
 
+// 邮箱的正则表达式
+const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
+
+// 用户密码的正则表达式
+const passwordPattern = /^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9,._!@#$^&*]{8,20}$/;
+
+// 修改密码生成唯一加密标识，加密token的秘钥
+const tokenSecret = "xxxxxxxx";
+
 // jwt secret
 const jwtSecret = "xxxxxxxx";
 
@@ -63,6 +72,9 @@ module.exports = {
   MQConnection,
   MQDefaultJobOptions,
   LoginJwtExpiresIn,
+  emailPattern,
+  passwordPattern,
+  tokenSecret,
   jwtSecret,
   siteUrl,
   MaxPictures,

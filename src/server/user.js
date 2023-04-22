@@ -1,10 +1,18 @@
 const queryDB = require("../model/db");
 const jwt = require("../utils/jwt"); // 生成jwt
-const { LoginJwtExpiresIn, jwtSecret, siteUrl } = require("../../project.config");
+const {
+  LoginJwtExpiresIn,
+  tokenSecret,
+  jwtSecret,
+  siteUrl,
+  emailPattern,
+  passwordPattern
+} = require("../../project.config");
 const { encryptPassword } = require("../utils/encryptPassword"); // 将明文密码用sha256加密
 const { verifyJwt } = require("../utils/verifyJWT"); // 验证jwt_token是否合法
 const randomCode = require("../utils/randomCode"); // 生成随机验证码
 const randomStr = require("../utils/randomStr"); // 生成随机字符串
+const randomGuid = require("../utils/randomGuid"); // 生成随机GUID
 const redisClient = require("../utils/redis/redis"); // 连接redis
 const fs = require("fs");
 const path = require("path");
@@ -20,7 +28,7 @@ class User {
     const user = ctx.request.body;
 
     let res;
-    if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(user.username)) {
+    if (emailPattern.test(user.username)) {
       res = await queryDB(`select uid,username,password from meetu_users where email="${user.username}"`);
     } else {
       res = await queryDB(`select uid,username,password from meetu_users where username="${user.username}"`);
@@ -54,7 +62,6 @@ class User {
   async register(ctx) {
     // 1.拿到请求体中的用户名和密码并验证
     const user = ctx.request.body;
-    const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
 
     if (!user.username) {
       ctx.body = { code: 400, msg: "用户名不得为空" };
@@ -70,7 +77,7 @@ class User {
       ctx.body = { code: 400, msg: "用户名不能是邮箱格式" };
     } else if (!emailPattern.test(user.email.toString())) {
       ctx.body = { code: 400, msg: "邮箱格式错误！" };
-    } else if (!/^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9,._!@#$^&*]{8,20}$/.test(user.password.toString())) {
+    } else if (!passwordPattern.test(user.password.toString())) {
       ctx.body = { code: 400, msg: "密码8~20位，必须包含大小写字母和数字，特殊字符可选(,._!@#$^&*)" };
     } else {
       // 2.验证邮箱
@@ -136,10 +143,11 @@ class User {
       });
   }
 
-  // 发送邮件
+  // 发送注册邮件
   async email(ctx) {
     const emailBox = ctx.request?.body?.email;
     if (!emailBox) return (ctx.body = { code: 400, msg: "缺少必需参数email" });
+    else if (!emailPattern.test(emailBox)) return (ctx.body = { code: 400, msg: "邮箱格式错误" });
 
     if (await redisClient(0).exists(emailBox)) {
       ctx.body = { code: 400, msg: "验证码已存在" };
@@ -264,7 +272,7 @@ class User {
     const body = ctx.request.body;
     if (!body.username || body.username.toString().length < 4 || body.username.toString().length > 30) {
       ctx.body = { code: 400, msg: "用户名必须为4~30个字符" };
-    } else if (/^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/.test(body.username.toString())) {
+    } else if (emailPattern.test(body.username.toString())) {
       ctx.body = { code: 400, msg: "用户名不能是邮箱格式" };
     } else {
       await queryDB(`select uid from meetu_users where username="${body.username}"`)
@@ -293,7 +301,7 @@ class User {
     const res = await queryDB(`select email from meetu_users where uid=${uid}`);
     const email = res[0].email;
     // 生成唯一的链接：前端路由 + 唯一加密标识。加密标识由jwt生成，将小数点替换为短横线
-    const token = await jwt.sign({ uid }, jwtSecret, { expiresIn: "72h" });
+    const token = await jwt.sign({ uid }, tokenSecret, { expiresIn: "72h" });
     await redisClient(2).setString(uid.toString(), token, 60 * 60 * 72);
     const { href: url } = new URL(`/#/changePassword/${token.replace(/[.]/g, "*")}`, siteUrl);
     // 发送邮件
@@ -304,12 +312,6 @@ class User {
     // const sendMailResult = await sendMail("[Meetu]修改密码", email, emailContent);
 
     ctx.body = { code: 200, msg: "邮件发送中，请注意查收！", data: null };
-
-    // if (sendMailResult.err) {
-    //   ctx.body = { code: 403, msg: sendMailResult.err };
-    // } else if (sendMailResult.data) {
-    //   ctx.body = { code: 200, msg: "邮件发送中，请注意查收！", data: sendMailResult.data };
-    // }
   }
 
   // 修改用户密码
@@ -317,7 +319,6 @@ class User {
     const { token, password } = ctx.request.body;
     const restoreToken = token.replace(/[*]/g, "."); // 还原token
     if (restoreToken) {
-      console.log(restoreToken);
       await verifyJwt(restoreToken)
         .then(async results => {
           const uid = results.uid;
@@ -325,7 +326,7 @@ class User {
             .getString(uid.toString())
             .then(async token => {
               if (token === restoreToken) {
-                if (/^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9,._!@#$^&*]{8,20}$/.test(password.trim())) {
+                if (passwordPattern.test(password.trim())) {
                   // 允许修改密码
                   await queryDB(`UPDATE meetu_users SET password="${encryptPassword(password)}" WHERE uid=${uid}`)
                     .then(async () => {
@@ -414,24 +415,64 @@ class User {
     }
   }
 
+  // 验证旧邮箱地址，返回token
+  async verifyOldEmail(ctx) {
+    const uid = ctx.uid;
+    const { oldEmail } = ctx.request.body;
+    if (!oldEmail) return (ctx.body = { code: 400, msg: "缺少必需参数oldEmail" });
+
+    const res = await queryDB(`select email from meetu_users where uid=${uid}`).catch(err => {
+      console.log("verifyOldEmail queryDB Error: ", err);
+      return (ctx.body = { code: 500, msg: "服务端错误" });
+    });
+    const email = res[0].email;
+
+    if (String(oldEmail) !== String(email)) return (ctx.body = { code: 400, msg: "旧邮箱不正确" });
+    else {
+      // 生成随机guid作为token返回前端
+      const guid = randomGuid();
+
+      // 存储到redis中缓存起来, 有效期5分钟
+      await redisClient(4) // 先把上一次的删掉
+        .delString(uid.toString())
+        .catch(() => {});
+      const res = await redisClient(4).setString(uid.toString(), String(guid), 60 * 5);
+
+      return (ctx.body = { code: 200, msg: "验证成功", data: { token: guid } });
+    }
+  }
+
   // 修改邮箱地址
   async modifyMailbox(ctx) {
     const uid = ctx.uid;
-    const body = ctx.request.body;
-    const res = await queryDB(`select email from meetu_users where uid=${uid}`);
-    const emailPattern = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/;
-    if (!body.newEmail || !emailPattern.test(body.newEmail)) {
-      ctx.body = { code: 400, msg: "邮箱格式不合法" };
-    } else if (!body.verifyCode) {
-      ctx.body = { code: 400, msg: "缺少验证码" };
+    const { newEmail, verifyCode, token } = ctx.request.body;
+
+    const redisToken = await redisClient(4)
+      .getString(uid.toString())
+      .catch(() => {});
+
+    if (!token || !redisToken || token.toString() !== redisToken.toString()) {
+      return (ctx.body = { code: 4001, msg: "验证token不合法，请重新验证旧邮箱" });
+    } else if (!newEmail || !emailPattern.test(newEmail)) {
+      return (ctx.body = { code: 4002, msg: "邮箱格式不合法" });
+    } else if (!verifyCode) {
+      return (ctx.body = { code: 4003, msg: "缺少验证码" });
     } else {
       await redisClient(2)
-        .getString(body.newEmail.toString())
+        .getString(newEmail.toString())
         .then(async result => {
-          if (result === body.verifyCode) {
-            await queryDB(`UPDATE meetu_users SET email="${body.newEmail}" WHERE uid=${parseInt(uid)}`)
+          if (result === verifyCode) {
+            // 判断新邮箱是否已被注册
+            const res = await queryDB(`select email from meetu_users where email = "${newEmail}"`);
+            if (res.length) return (ctx.body = { code: 400, msg: "邮箱已被注册" });
+
+            // 验证完成，写入数据库
+            await queryDB(`UPDATE meetu_users SET email="${newEmail}" WHERE uid=${parseInt(uid)}`)
               .then(async () => {
-                if (res[0].email) await redisClient(2).delString(res[0].email);
+                await redisClient(2) // 把邮箱验证码删掉
+                  .delString(newEmail.toString())
+                  .catch(() => {});
+
                 ctx.body = { code: 200, msg: "修改成功" };
               })
               .catch(() => {
@@ -442,32 +483,33 @@ class User {
           }
         })
         .catch(() => {
-          ctx.body = { code: 400, msg: "验证码无效" };
+          ctx.body = { code: 4004, msg: "验证码无效" };
         });
     }
   }
 
   // 发送`修改邮箱`的验证码邮件
   async ModifyMailboxLetter(ctx) {
-    const uid = ctx.uid;
-    const res = await queryDB(`select email from meetu_users where uid=${uid}`);
-    const email = res[0].email;
-    if (await redisClient(2).exists(email)) {
+    // const uid = ctx.uid;
+    const { newEmail } = ctx.request.body;
+    if (!newEmail || !emailPattern.test(newEmail)) return (ctx.body = { code: 400, msg: "邮箱地址为空或格式不合法" });
+
+    if (await redisClient(2).exists(newEmail)) {
       ctx.body = { code: 400, msg: "验证码已存在" };
     } else {
       // 生成随机验证码
       const verifyCode = randomCode(6);
       // 将验证码存储到redis中
-      let setStringResult = await redisClient(2).setString(email, verifyCode, 60 * 5);
+      let setStringResult = await redisClient(2).setString(newEmail.toString(), verifyCode, 60 * 5);
 
       while (setStringResult !== "OK") {
-        setStringResult = await redisClient(2).setString(email, verifyCode, 60 * 5);
+        setStringResult = await redisClient(2).setString(newEmail.toString(), verifyCode, 60 * 5);
       }
       // 发送邮件
       const emailContent = `<p>尊敬的用户你好，你正在[Meetu]申请修改邮箱地址，验证码：${verifyCode}，5分钟内有效。请确认是否为本人操作，如果不是，请忽略本邮件。</p>
                           <h1 style="font-size: 25px;text-align: left;">${verifyCode}</h1>`;
 
-      myQueue.add("send-email", { subject: "[Meetu]修改邮箱地址", to: email, text: emailContent });
+      myQueue.add("send-email", { subject: "[Meetu]修改邮箱地址", to: newEmail, text: emailContent });
       // const sendMailResult = await sendMail("[Meetu]修改邮箱地址", email, emailContent);
 
       ctx.body = { code: 200, msg: "邮件发送中，请注意查收！", data: null };

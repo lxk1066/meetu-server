@@ -151,7 +151,7 @@ class Notice {
 
   // 删除指定通知
   async deleteNotice(ctx) {
-    const uid = ctx.uid;
+    // const uid = ctx.uid;
     const body = ctx.request.body;
     if (!body || !body.noticeId) {
       ctx.body = { code: 400, msg: "缺少必需参数noticeId" };

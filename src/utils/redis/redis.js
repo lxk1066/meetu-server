@@ -2,6 +2,15 @@ const { createClient } = require("redis");
 const { redis } = require("../../../project.config");
 
 /**
+ * 记录各个redis数据库的用途:
+ * 1: 存储socketID与用户ID的映射
+ * 2: 存储修改邮箱时发送的验证码，key是邮箱地址; 存储修改用户密码时生成的唯一加密标识，key是uid
+ * 3: 存储每个用户的通知列表，key是用户的MUID
+ * 4: 存储验证旧邮箱返回的token，用于修改邮箱地址时验证身份。key是uid
+ * 5: MQ任务队列
+ */
+
+/**
  * redis://[[username][:password]@][host][:port][/db-number]
  * 写密码redis://:123456@127.0.0.1:6379/0
  * 写用户redis://uername@127.0.0.1:6379/0

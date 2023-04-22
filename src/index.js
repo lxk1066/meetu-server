@@ -43,6 +43,11 @@ io.on("connection", socket => {
   socket.on("set-user-id", async userId => {
     console.log("set-user-id", userId);
     socket.uid = userId;
+
+    // 先把原来的删掉, 再存
+    await redisClient(1)
+      .delString(userId)
+      .catch(() => {});
     await redisClient(1).setString(userId, socket.id);
   });
 
