@@ -36,7 +36,7 @@ class User {
 
     if (res.length <= 0) {
       ctx.body = { code: 403, msg: "用户名或密码错误！" };
-    } else if (encryptPassword(user.password) !== res[0].password) {
+    } else if (user.password !== res[0].password) {
       ctx.body = { code: 403, msg: "用户名或密码错误！" };
     } else {
       // 2.如果验证成功，生成token
