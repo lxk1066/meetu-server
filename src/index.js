@@ -1,6 +1,11 @@
 // 引入koa、koa-body、koa-cors
+const fs = require("fs");
+const path = require("path");
+
 const Koa = require("koa");
 const { createServer } = require("http");
+const https = require("https");
+const sslify = require("koa-sslify").default;
 const { Server: SocketServer } = require("socket.io");
 const { koaBody } = require("koa-body");
 const cors = require("koa2-cors");
@@ -95,4 +100,16 @@ io.on("connection", socket => {
 
 httpServer.listen(8000, () => {
   console.log("server is running on http://127.0.0.1:8000");
+});
+
+// 配置ssl证书
+app.use(sslify);
+const options = {
+  key: fs.readFileSync(path.join(__dirname, "./ssl/custom.key")),
+  cert: fs.readFileSync(path.join(__dirname, "./ssl/custom.pem"))
+};
+
+// 启动https服务
+https.createServer(options, app.callback()).listen(8080, () => {
+  console.log("https server is running at port 443");
 });
