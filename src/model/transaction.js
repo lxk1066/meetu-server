@@ -1,9 +1,10 @@
-const mysql = require('mysql')
-const { DB } = require('../../project.config.js')
+const mysql = require("mysql");
+const { DB } = require("../../project.config.js");
 
 // 创建连接池
 let pool = mysql.createPool({
   host: DB.host,
+  port: DB.port || 3306,
   user: DB.user,
   password: DB.password,
   database: DB.database
@@ -24,7 +25,7 @@ function transaction(sqls) {
       }
 
       // 开始执行事务
-      connection.beginTransaction((beginErr) => {
+      connection.beginTransaction(beginErr => {
         // 创建事务失败
         if (beginErr) {
           connection.release();
@@ -44,7 +45,7 @@ function transaction(sqls) {
         });
         // 使用 Promise.all方法 对里面的每个promise执行的状态 检查
         Promise.all(funcAry)
-          .then((arrResult) => {
+          .then(arrResult => {
             // 若每个sql语句都执行成功了 才会走到这里 在这里需要提交事务，前面的sql执行才会生效
             // 提交事务
             connection.commit((commitErr, info) => {
@@ -65,7 +66,7 @@ function transaction(sqls) {
               resolve(arrResult);
             });
           })
-          .catch((error) => {
+          .catch(error => {
             // 多条sql语句执行中 其中有一条报错 直接回滚
             connection.rollback(function () {
               console.log("sql事务运行失败： " + error);
@@ -80,7 +81,7 @@ function transaction(sqls) {
 
 module.exports = {
   transaction
-}
+};
 
 // 作者：jq玩的起飞
 // 链接：https://juejin.cn/post/7025777763374071844

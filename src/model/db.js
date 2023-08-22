@@ -1,8 +1,9 @@
-const mysql = require('mysql')
-const { DB } = require('../../project.config.js')
+const mysql = require("mysql");
+const { DB } = require("../../project.config.js");
 
 let pool = mysql.createPool({
   host: DB.host,
+  port: DB.port || 3306,
   user: DB.user,
   password: DB.password,
   database: DB.database
@@ -13,23 +14,23 @@ function queryDB(sql) {
     if (pool) {
       pool.getConnection((err, connection) => {
         if (err) {
-          reject(err)
+          reject(err);
         } else {
           connection.query(sql, function (err, results) {
             if (err) {
-              reject(err)
+              reject(err);
             } else {
-              resolve(results)
+              resolve(results);
             }
             // 结束会话
-            connection.release()
+            connection.release();
           });
         }
-      })
+      });
     } else {
-      reject("数据库连接失败！")
+      reject("数据库连接失败！");
     }
-  })
+  });
 }
 
 module.exports = queryDB;

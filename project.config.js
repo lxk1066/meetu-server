@@ -4,6 +4,7 @@ const originHosts = ["xxxxxxxx"];
 // 数据库的配置信息
 const DB = {
   host: "xxxxxxxx",
+  port: 3306,
   user: "xxxxxxxx",
   password: "xxxxxxxx",
   database: "xxxxxxxx"
