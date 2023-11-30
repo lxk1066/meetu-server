@@ -60,6 +60,15 @@ class Square {
         }
       }
 
+      // 写入数据库
+
+      // 将帖子内容中的\r\n\t转义
+      body.content = body.content.replace(/(\r\n)|(\n)/g, "\\n");
+      body.content = body.content.replace(/\t/g, "\\t");
+      // 将帖子内容中的单引号和双引号转义
+      body.content = body.content.replace(/(?<!\\)\"/g, '\\"');
+      body.content = body.content.replace(/(?<!\\)\'/g, "\\'");
+
       await queryDB(`insert into meetu_square_articles(title, content, muid, updated_time) values(
         "${body.title}",
         "${body.content}",
