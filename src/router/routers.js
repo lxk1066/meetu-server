@@ -5,10 +5,12 @@
 const Router = require("koa-router");
 const router = new Router({ prefix: "/api" });
 
+const baseRouter = require("./baseRouter");
 const userRouter = require("./userRouter");
 const squareRouter = require("./squareRouter");
 const noticeRouter = require("./noticeRouter");
 
+router.use(baseRouter.routes());
 router.use(userRouter.routes());
 router.use(squareRouter.routes());
 router.use(noticeRouter.routes());

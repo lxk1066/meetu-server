@@ -1,5 +1,6 @@
 const { verifyJwt } = require("../utils/verifyJWT");
 const middleware = async (ctx, next) => {
+  ctx.hrtime = process.hrtime();
   // 该数组中的请求路由不需要验证 jwt_token
   const arr = ["/api/user/login", "/api/user/reg", "/api/user/email", "/api/user/changePassword"];
   if (ctx.request.method === "GET" || arr.includes(ctx.request.path)) {
