@@ -6,7 +6,6 @@ class Base {
     const time = Date.now();
     const end = process.hrtime(ctx.hrtime); // 计算时间差
     const diff = Math.round((end[0] * 1e9 + end[1]) / 1e6); // 单位毫秒
-    await sleep(5000);
     return (ctx.body = { code: 200, msg: "ok", date: time - diff });
   }
 
@@ -33,12 +32,6 @@ class Base {
       return (ctx.body = { code: 200, msg: "ok", data: name ? res[0] : res });
     }
   }
-}
-
-function sleep(ms) {
-  return new Promise(resolve => {
-    setTimeout(resolve, ms);
-  });
 }
 
 module.exports = new Base();
