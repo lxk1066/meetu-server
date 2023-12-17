@@ -54,9 +54,6 @@ const tokenSecret = "xxxxxxxx";
 // jwt secret
 const jwtSecret = "xxxxxxxx";
 
-// 前端的URL
-const siteUrl = "xxxxxxxx";
-
 // 登录成功后生成的json web token有效期时长
 const LoginJwtExpiresIn = "7days";
 

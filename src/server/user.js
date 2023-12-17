@@ -1,13 +1,6 @@
 const queryDB = require("../model/db");
 const jwt = require("../utils/jwt"); // 生成jwt
-const {
-  LoginJwtExpiresIn,
-  tokenSecret,
-  jwtSecret,
-  siteUrl,
-  emailPattern,
-  passwordPattern
-} = require("../../project.config");
+const { LoginJwtExpiresIn, tokenSecret, jwtSecret, emailPattern, passwordPattern } = require("../../project.config");
 const { encryptPassword } = require("../utils/encryptPassword"); // 将明文密码用sha256加密
 const { verifyJwt } = require("../utils/verifyJWT"); // 验证jwt_token是否合法
 const randomCode = require("../utils/randomCode"); // 生成随机验证码
@@ -298,8 +291,19 @@ class User {
   // 发送`修改用户密码`的邮件
   async updatePasswordEmail(ctx) {
     const uid = ctx.uid;
-    const res = await queryDB(`select email from meetu_users where uid=${uid}`);
-    const email = res[0].email;
+    const sql1 = `select email from meetu_users where uid=${uid}`;
+    const sql2 = `select value from meetu_info where type = 'website' and disabled = 0;`;
+    const res = await Promise.all([queryDB(sql1), queryDB(sql2)]).catch(error => {
+      console.log("updatePasswordEmail Error:", error);
+      return (ctx.body = { code: 500, msg: "查询数据库错误" });
+    });
+    if (!res[0][0].email || !res[1][0].value) {
+      console.log("updatePasswordEmail SQL Error: 用户邮箱或前端站点URL获取失败！");
+      return (ctx.body = { code: 500, msg: "查询数据不存在，请联系管理员！" });
+    }
+
+    const email = res[0][0].email;
+    const siteUrl = res[1][0].value;
     // 生成唯一的链接：前端路由 + 唯一加密标识。加密标识由jwt生成，将小数点替换为短横线
     const token = await jwt.sign({ uid }, tokenSecret, { expiresIn: "72h" });
     await redisClient(2).setString(uid.toString(), token, 60 * 60 * 72);
